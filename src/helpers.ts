@@ -3,18 +3,17 @@ import fs from "fs";
 import path from "path";
 import ts from "typescript";
 
+const nodeModulesPattern = "/node_modules/";
 export const PATH_SEPARATOR_REGEX = /\\/g;
+const EXTENSION = /\..*$/g;
 
 interface AssemblyInfo {
 	PackageName: string;
+	PackagePath: string;
 	OutDir: string;
 	SrcDir: string;
 }
 
-/**
- * Returns declaration of symbol. ValueDeclaration is preferred.
- * @param symbol
- */
 export function getDeclaration(symbol?: ts.Symbol): ts.Declaration | undefined {
 	if (!symbol) {
 		return undefined;
@@ -23,10 +22,6 @@ export function getDeclaration(symbol?: ts.Symbol): ts.Declaration | undefined {
 	return symbol.valueDeclaration || symbol.declarations?.[0];
 }
 
-/**
- * Returns symbol of the type.
- * @param type
- */
 export function getSymbol(type: ts.Type): ts.Symbol {
 	return type.aliasSymbol || type.symbol;
 }
@@ -84,6 +79,7 @@ function findPackageNameAndSrcOutDir(filePath: string) {
 
 		result = {
 			PackageName: packageName,
+			PackagePath: removeLastFolder(packagePath),
 			SrcDir: tsconfigs.get(tsConfigPath)!.srcDir,
 			OutDir: tsconfigs.get(tsConfigPath)!.outDir,
 		};
@@ -110,8 +106,8 @@ function getAssemblyInfoFromFilePath(filePath: string): AssemblyInfo {
 		throw new Error("outDir or srcDir not found");
 	}
 
-	srcDir = removeLastFolder(srcDir.replace(PATH_SEPARATOR_REGEX, "/"));
-	outDir = removeLastFolder(outDir.replace(PATH_SEPARATOR_REGEX, "/"));
+	srcDir = path.relative(removeLastFolder(tsConfigPath), srcDir.replace(PATH_SEPARATOR_REGEX, "/"));
+	outDir = path.relative(removeLastFolder(tsConfigPath), outDir.replace(PATH_SEPARATOR_REGEX, "/"));
 
 	const packageInfo = fs.readFileSync(packageInfoPath, "utf-8");
 	const packageName = JSON.parse(packageInfo).name as string;
@@ -121,29 +117,34 @@ function getAssemblyInfoFromFilePath(filePath: string): AssemblyInfo {
 
 	return {
 		PackageName: packageName,
+		PackagePath: removeLastFolder(packageInfoPath),
 		SrcDir: srcDir,
 		OutDir: outDir,
 	};
 }
 
-/**
- * Get full name of the type
- * @param type
- * @param context
- */
 export function getTypeFullName(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
 	if (!declaration) {
-		return undefined;
+		return "Unknown";
 	}
 
 	let filePath = declaration.getSourceFile().fileName;
-	const { PackageName, SrcDir, OutDir } = getAssemblyInfoFromFilePath(filePath);
+	const nodeModulesIndex = filePath.lastIndexOf(nodeModulesPattern);
+	const { PackageName, SrcDir, OutDir, PackagePath } = getAssemblyInfoFromFilePath(filePath);
 
-	filePath = filePath.replace(OutDir, SrcDir);
-	filePath = PackageName + "/" + path.relative(SrcDir, filePath).replace(PATH_SEPARATOR_REGEX, "/");
+	if (nodeModulesIndex === -1) {
+		console.log(SrcDir, OutDir, filePath)
+		filePath = filePath.replace(SrcDir, OutDir);
+		console.log(filePath)
+	}
+
+	filePath =
+		PackageName +
+		":" +
+		path.relative(PackagePath, filePath).replace(PATH_SEPARATOR_REGEX, "/").replace(EXTENSION, "");
 
 	return filePath + "#" + symbol.getName();
 }
