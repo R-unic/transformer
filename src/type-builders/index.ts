@@ -31,6 +31,8 @@ function TypeofCollection(value: any) {
 }
 
 export const ConvertValueToExpression = (value: any) => {
+	if (ts.isNode(value)) return value;
+
 	const typeName = typeof value;
 	let builder = TypeBuilders.get(typeName);
 	if (typeName === "object") {

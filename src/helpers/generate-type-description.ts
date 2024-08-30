@@ -3,6 +3,7 @@ import { getTypeFullName } from ".";
 import { Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
 import { TransformContext } from "../transformer";
+import { ReflectionRuntime } from "../reflect-runtime";
 
 function GetInterfaces(node: ts.Node) {
 	if (!ts.isClassDeclaration(node)) return [];
@@ -11,8 +12,12 @@ function GetInterfaces(node: ts.Node) {
 	const heritageClause = node.heritageClauses.find((clause) => clause.token === ts.SyntaxKind.ImplementsKeyword);
 	if (!heritageClause) return [];
 
+	const typeChecker = TransformContext.Instance.typeChecker;
 	return heritageClause.types.map((node) => {
-		return GenerateTypeDescriptionFromNode(node);
+		const type = typeChecker.getTypeAtLocation(node);
+		const fullName = getTypeFullName(type);
+
+		return ReflectionRuntime.GetType(fullName) as Type;
 	});
 }
 
