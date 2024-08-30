@@ -1,6 +1,6 @@
 import ts from "typescript";
-import { TransformContext } from "../transformer";
 import { getTypeFullName } from "../helpers";
+import { TransformContext } from "../transformer";
 import { ConvertValueToExpression } from "../type-builders";
 
 export function VisitCallExpression(state: TransformContext, node: ts.CallExpression) {

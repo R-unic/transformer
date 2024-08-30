@@ -136,9 +136,7 @@ export function getTypeFullName(type: ts.Type) {
 	const { PackageName, SrcDir, OutDir, PackagePath } = getAssemblyInfoFromFilePath(filePath);
 
 	if (nodeModulesIndex === -1) {
-		console.log(SrcDir, OutDir, filePath)
 		filePath = filePath.replace(SrcDir, OutDir);
-		console.log(filePath)
 	}
 
 	filePath =
