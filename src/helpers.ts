@@ -2,21 +2,13 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
-import { TransformContext } from "./transformer";
 
 export const PATH_SEPARATOR_REGEX = /\\/g;
-const nodeModulesPattern = "/node_modules/";
 
-let typeIdCounter = -1;
-
-/**
- * Returns id of given type
- * @description Id is taken from type's Symbol.
- * @param type
- * @param typeChecker
- */
-export function getTypeId(type: ts.Type): number {
-	return (type as any).id ?? ((type as any).id = typeIdCounter--);
+interface AssemblyInfo {
+	PackageName: string;
+	OutDir: string;
+	SrcDir: string;
 }
 
 /**
@@ -38,6 +30,9 @@ export function getDeclaration(symbol?: ts.Symbol): ts.Declaration | undefined {
 export function getSymbol(type: ts.Type): ts.Symbol {
 	return type.aliasSymbol || type.symbol;
 }
+
+const packageJsons = new Map<string, { packageName: string; tsConfigPath: string }>(); // path -> { packageName, tsConfigPath }
+const tsconfigs = new Map<string, { srcDir: string; outDir: string; packagePath: string }>(); // path -> { srcDir, outDir packagePath }
 
 function findPackageJsonAndTSConfigFromFilePath(filePath: string) {
 	const spl = filePath.split("/");
@@ -78,6 +73,59 @@ function removeLastFolder(_path: string) {
 	return path.join(...spl).replace(PATH_SEPARATOR_REGEX, "/");
 }
 
+function findPackageNameAndSrcOutDir(filePath: string) {
+	let result: AssemblyInfo | undefined;
+
+	packageJsons.forEach(({ packageName, tsConfigPath }, packagePath) => {
+		if (result) return;
+
+		const relativePath = path.relative(packagePath, filePath);
+		if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) return;
+
+		result = {
+			PackageName: packageName,
+			SrcDir: tsconfigs.get(tsConfigPath)!.srcDir,
+			OutDir: tsconfigs.get(tsConfigPath)!.outDir,
+		};
+	});
+
+	return result;
+}
+
+function getAssemblyInfoFromFilePath(filePath: string): AssemblyInfo {
+	const found = findPackageNameAndSrcOutDir(filePath);
+
+	if (found) {
+		return found;
+	}
+
+	const [packageInfoPath, tsConfigPath] = findPackageJsonAndTSConfigFromFilePath(filePath);
+
+	if (!tsConfigPath || !packageInfoPath) {
+		throw new Error("tsconfig.json or package.json not found");
+	}
+
+	let { srcDir, outDir } = readSrcAndOutDir(tsConfigPath);
+	if (!outDir || !srcDir) {
+		throw new Error("outDir or srcDir not found");
+	}
+
+	srcDir = removeLastFolder(srcDir.replace(PATH_SEPARATOR_REGEX, "/"));
+	outDir = removeLastFolder(outDir.replace(PATH_SEPARATOR_REGEX, "/"));
+
+	const packageInfo = fs.readFileSync(packageInfoPath, "utf-8");
+	const packageName = JSON.parse(packageInfo).name as string;
+
+	packageJsons.set(packageInfoPath, { packageName, tsConfigPath });
+	tsconfigs.set(tsConfigPath, { srcDir, outDir, packagePath: packageInfoPath });
+
+	return {
+		PackageName: packageName,
+		SrcDir: srcDir,
+		OutDir: outDir,
+	};
+}
+
 /**
  * Get full name of the type
  * @param type
@@ -92,21 +140,10 @@ export function getTypeFullName(type: ts.Type) {
 	}
 
 	let filePath = declaration.getSourceFile().fileName;
-	const [packageInfoPath, tsConfigPath] = findPackageJsonAndTSConfigFromFilePath(filePath);
+	const { PackageName, SrcDir, OutDir } = getAssemblyInfoFromFilePath(filePath);
 
-	if (!tsConfigPath || !packageInfoPath) {
-		throw new Error("tsconfig.json or package.json not found");
-	}
-
-	const { srcDir, outDir } = readSrcAndOutDir(tsConfigPath);
-	if (!outDir || !srcDir) {
-		throw new Error("outDir or srcDir not found");
-	}
-	const packageInfo = fs.readFileSync(packageInfoPath, "utf-8");
-	const packageName = JSON.parse(packageInfo).name as string;
-
-	filePath = filePath.replace(outDir.split("/").at(-1)!, srcDir.split("/").at(-1)!);
-	filePath = packageName + "/" + path.relative(removeLastFolder(srcDir), filePath).replace(PATH_SEPARATOR_REGEX, "/");
+	filePath = filePath.replace(OutDir, SrcDir);
+	filePath = PackageName + "/" + path.relative(SrcDir, filePath).replace(PATH_SEPARATOR_REGEX, "/");
 
 	return filePath + "#" + symbol.getName();
 }
