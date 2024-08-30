@@ -11,7 +11,9 @@ function GetInterfaces(node: ts.Node) {
 	const heritageClause = node.heritageClauses.find((clause) => clause.token === ts.SyntaxKind.ImplementsKeyword);
 	if (!heritageClause) return [];
 
-	return heritageClause.types.map((node) => GenerateTypeDescriptionFromNode(node));
+	return heritageClause.types.map((node) => {
+		return GenerateTypeDescriptionFromNode(node);
+	});
 }
 
 function GetAccessModifier(modifiers?: NodeArray<ts.ModifierLike>) {
@@ -33,30 +35,27 @@ function GenerateProperty(propertyNode: PropertyDeclaration | PropertySignature)
 	};
 }
 
-function GetProperties(node: ts.Node) {
-	if (!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node)) return new Map<string, Property>();
+function GetProperties(node: ts.Node): Property[] {
+	if (!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node)) return [];
 
-	const mapLike = node.members
+	return node.members
 		.map((element) => {
 			if (ts.isPropertyDeclaration(element) || ts.isPropertySignature(element)) {
-				return [element.name?.getText() ?? "", GenerateProperty(element)] as const;
+				return GenerateProperty(element);
 			}
 		})
-		.filter((element) => element !== undefined);
-
-	return new Map(mapLike as Iterable<[string, Property]>);
+		.filter((element) => element !== undefined) as Property[];
 }
 
 export function GenerateTypeDescriptionFromNode(node: ts.Node): Type {
 	const typeChecker = TransformContext.Instance.typeChecker;
 	const type = typeChecker.getTypeAtLocation(node);
 	const fullName = getTypeFullName(type);
-	const interfaces = GetInterfaces(node);
 
 	return {
 		Name: type.symbol?.name ?? "",
 		FullName: fullName,
-		Interfaces: interfaces,
+		Interfaces: GetInterfaces(node),
 		Properties: GetProperties(node),
 	};
 }

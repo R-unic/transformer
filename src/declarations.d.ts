@@ -1,5 +1,3 @@
-import { AccessModifier } from "./enums";
-
 export type PackageInfo = {
 	rootDir: string;
 	name: string;
@@ -9,7 +7,7 @@ export interface Type {
 	Name: string;
 	FullName: string;
 	Interfaces: Type[];
-	Properties: Map<string, Property>;
+	Properties: Property[];
 }
 
 export interface Property {
