@@ -1,9 +1,9 @@
 import ts, { NodeArray, PropertyDeclaration, PropertySignature } from "typescript";
-import { getTypeFullName } from ".";
+import { GetTypeUid } from ".";
 import { Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
-import { TransformContext } from "../transformer";
 import { ReflectionRuntime } from "../reflect-runtime";
+import { TransformContext } from "../transformer";
 
 function GetInterfaces(node: ts.Node) {
 	if (!ts.isClassDeclaration(node)) return [];
@@ -15,9 +15,9 @@ function GetInterfaces(node: ts.Node) {
 	const typeChecker = TransformContext.Instance.typeChecker;
 	return heritageClause.types.map((node) => {
 		const type = typeChecker.getTypeAtLocation(node);
-		const fullName = getTypeFullName(type);
+		const fullName = GetTypeUid(type);
 
-		return ReflectionRuntime.GetType(fullName) as Type;
+		return ReflectionRuntime.GetType(fullName);
 	});
 }
 
@@ -29,10 +29,34 @@ function GetAccessModifier(modifiers?: NodeArray<ts.ModifierLike>) {
 	return AccessModifier[(modifier?.kind as keyof typeof AccessModifier) ?? ts.SyntaxKind.PublicKeyword];
 }
 
+function ExcludeUndefined(type: ts.Type) {
+	if (type.isUnion()) {
+		// Determine if the type have `type | undefined`
+		const types = type.types.filter((typeFromUnion) => typeFromUnion.flags !== ts.TypeFlags.Undefined);
+		if (types.length === 1) {
+			type = types[0];
+		}
+	}
+
+	return type;
+}
+
+function GetTypeDescription(type: ts.Type): Type;
+function GetTypeDescription(node: ts.Node): Type;
+function GetTypeDescription(node: ts.Node | ts.Type) {
+	const typeChecker = TransformContext.Instance.typeChecker;
+	const type = ts.isNode(node as ts.Node) ? typeChecker.getTypeAtLocation(node as ts.Node) : (node as ts.Type);
+	const fullName = GetTypeUid(type);
+
+	return ReflectionRuntime.GetType(fullName);
+}
+
 function GenerateProperty(propertyNode: PropertyDeclaration | PropertySignature): Property {
+	const typeChecker = TransformContext.Instance.typeChecker;
+
 	return {
 		Name: propertyNode.name?.getText() ?? "",
-		Type: GenerateTypeDescriptionFromNode(propertyNode),
+		Type: GetTypeDescription(ExcludeUndefined(typeChecker.getTypeAtLocation(propertyNode))),
 		Optional: propertyNode.questionToken !== undefined,
 		AccessModifier: GetAccessModifier(propertyNode.modifiers),
 		Readonly:
@@ -55,7 +79,8 @@ function GetProperties(node: ts.Node): Property[] {
 export function GenerateTypeDescriptionFromNode(node: ts.Node): Type {
 	const typeChecker = TransformContext.Instance.typeChecker;
 	const type = typeChecker.getTypeAtLocation(node);
-	const fullName = getTypeFullName(type);
+
+	const fullName = GetTypeUid(type);
 
 	return {
 		Name: type.symbol?.name ?? "",

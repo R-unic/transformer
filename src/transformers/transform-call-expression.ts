@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { getTypeFullName } from "../helpers";
+import { GetTypeUid } from "../helpers";
 import { TransformContext } from "../transformer";
 import { ConvertValueToExpression } from "../type-builders";
 
@@ -11,7 +11,7 @@ export function VisitCallExpression(state: TransformContext, node: ts.CallExpres
 	const typeArgument = node.typeArguments?.[0];
 	if (!typeArgument) return state.Transform(node);
 
-	const id = getTypeFullName(typeChecker.getTypeFromTypeNode(typeArgument));
+	const id = GetTypeUid(typeChecker.getTypeFromTypeNode(typeArgument));
 
 	return ConvertValueToExpression(id);
 }

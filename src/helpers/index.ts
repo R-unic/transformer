@@ -4,8 +4,9 @@ import path from "path";
 import ts from "typescript";
 
 const nodeModulesPattern = "/node_modules/";
-export const PATH_SEPARATOR_REGEX = /\\/g;
+const PATH_SEPARATOR_REGEX = /\\/g;
 const EXTENSION = /\..*$/g;
+export const PRIMITIVES = ["string", "number", "boolean", "undefined", "object", "function", "bigint", "symbol"];
 
 interface AssemblyInfo {
 	PackageName: string;
@@ -123,7 +124,19 @@ function getAssemblyInfoFromFilePath(filePath: string): AssemblyInfo {
 	};
 }
 
-export function getTypeFullName(type: ts.Type) {
+// https://github.com/roblox-ts/roblox-ts/blob/dc74f34fdab3caf20d65db080cf2dbf5c4f38fdc/src/TSTransformer/util/types.ts#L70
+function IsDefinedType(type: ts.Type) {
+	return (
+		type.flags === ts.TypeFlags.Object &&
+		type.getProperties().length === 0 &&
+		type.getCallSignatures().length === 0 &&
+		type.getConstructSignatures().length === 0 &&
+		type.getNumberIndexType() === undefined &&
+		type.getStringIndexType() === undefined
+	);
+}
+
+function GetSymbolUid(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
@@ -145,4 +158,20 @@ export function getTypeFullName(type: ts.Type) {
 		path.relative(PackagePath, filePath).replace(PATH_SEPARATOR_REGEX, "/").replace(EXTENSION, "");
 
 	return filePath + "#" + symbol.getName();
+}
+
+export function GetTypeUid(type: ts.Type) {
+	if (type.symbol) {
+		return GetSymbolUid(type);
+	} else if (IsDefinedType(type)) {
+		return `Primitive:defined`;
+	} else if (type.flags & ts.TypeFlags.Intrinsic) {
+		return `Primitive:${(type as ts.IntrinsicType).intrinsicName}`;
+	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
+		return `$PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
+	} else if (type.flags & ts.TypeFlags.StringLiteral) {
+		return `$PrimitiveString:${(type as ts.StringLiteralType).value}`;
+	}
+
+	return "Unknown";
 }
