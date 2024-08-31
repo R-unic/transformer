@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
+import { TransformContext } from "../transformer";
 
 const nodeModulesPattern = "/node_modules/";
 const PATH_SEPARATOR_REGEX = /\\/g;
@@ -136,7 +137,20 @@ function IsDefinedType(type: ts.Type) {
 	);
 }
 
-function GetSymbolUid(type: ts.Type) {
+export function getType(symbol: ts.Symbol): ts.Type | undefined {
+	const typeChecker = TransformContext.Instance.typeChecker;
+
+	if (symbol.flags == ts.SymbolFlags.Interface) {
+		return typeChecker.getDeclaredTypeOfSymbol(symbol);
+	}
+
+	const declaration = getDeclaration(symbol);
+	if (!declaration) return undefined;
+
+	return typeChecker.getTypeOfSymbolAtLocation(symbol, declaration);
+}
+
+function GetSymbolUID(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
@@ -162,15 +176,15 @@ function GetSymbolUid(type: ts.Type) {
 
 export function GetTypeUid(type: ts.Type) {
 	if (type.symbol) {
-		return GetSymbolUid(type);
+		return GetSymbolUID(type);
 	} else if (IsDefinedType(type)) {
 		return `Primitive:defined`;
 	} else if (type.flags & ts.TypeFlags.Intrinsic) {
 		return `Primitive:${(type as ts.IntrinsicType).intrinsicName}`;
 	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
-		return `$PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
+		return `PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
-		return `$PrimitiveString:${(type as ts.StringLiteralType).value}`;
+		return `PrimitiveString:${(type as ts.StringLiteralType).value}`;
 	}
 
 	return "Unknown";
