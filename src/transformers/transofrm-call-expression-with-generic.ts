@@ -1,0 +1,29 @@
+import ts from "typescript";
+import { GetTypeUid } from "../helpers";
+import { GenerateIndexOfGenerics, GetGenericIndex } from "../helpers/generic-helper";
+import { ReflectionRuntime } from "../reflect-runtime";
+import { TransformContext } from "../transformer";
+
+export function TransformCallExpressionWithGeneric(state: TransformContext, node: ts.CallExpression) {
+	if (!node.typeArguments) return node;
+
+	state.AddNode(
+		ReflectionRuntime.SetupGenericParameters(
+			node.typeArguments.map((node) => {
+				const type = state.typeChecker.getTypeFromTypeNode(node);
+
+				if (type.isTypeParameter()) {
+					const index = GetGenericIndex(type);
+
+					if (index !== undefined) {
+						return GenerateIndexOfGenerics(index);
+					}
+				}
+
+				return GetTypeUid(type);
+			}),
+		),
+	);
+
+	return node;
+}

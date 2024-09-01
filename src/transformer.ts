@@ -28,6 +28,7 @@ export class TransformContext {
 
 	private config!: ConfigObject;
 	private importSpecs = new Set<string>();
+	private addedNodes: ts.Node[] = [];
 
 	constructor(
 		public program: ts.Program,
@@ -41,6 +42,14 @@ export class TransformContext {
 
 	public get Config(): ConfigObject {
 		return this.config;
+	}
+
+	public ClearAddedNodes() {
+		this.addedNodes = [];
+	}
+
+	public AddNode(node: ts.Node) {
+		this.addedNodes.push(node);
 	}
 
 	private getPackage(root: string, recursiveCheck: boolean = false): PackageInfo {
@@ -171,7 +180,24 @@ export class TransformContext {
 	}
 
 	public Transform<T extends ts.Node>(node: T): T {
-		return ts.visitEachChild(node, (node) => visitNode(this, node), this.context);
+		return ts.visitEachChild(
+			node,
+			(node) => {
+				if (!ts.isStatementOrBlock(node)) {
+					return visitNode(this, node);
+				}
+				const prevNodes = this.addedNodes;
+				this.ClearAddedNodes();
+
+				const newNode = visitNode(this, node);
+				const newNodes = [...this.addedNodes, ...(Array.isArray(newNode) ? newNode : [newNode])];
+				this.ClearAddedNodes();
+				this.addedNodes = prevNodes;
+
+				return newNodes;
+			},
+			this.context,
+		);
 	}
 }
 
