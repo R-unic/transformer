@@ -27,13 +27,13 @@ export interface Method {
 	readonly AccessModifier: number;
 	readonly IsStatic: boolean;
 	readonly IsAbstract: boolean;
-	readonly Callback: (context: unknown, ...args: unknown[]) => unknown;
+	readonly Callback?: (context: unknown, ...args: unknown[]) => unknown;
 }
 
 export interface ConstructorInfo {
 	readonly Parameters: Parameter[];
 	readonly AccessModifier: number;
-	readonly Callback: (...args: unknown[]) => unknown;
+	readonly Callback?: (...args: unknown[]) => unknown;
 }
 
 export interface Property {

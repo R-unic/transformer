@@ -3,6 +3,7 @@ import ts from "typescript";
 import { TransformContext } from "../transformer";
 import { VisitCallExpression } from "./transform-call-expression";
 import { VisitClassDeclaration } from "./transform-class-declaration";
+import { VisitFunctionDeclaration } from "./transform-function-declaration";
 import { VisitInterfaceDeclaration } from "./transform-interface-declaration";
 
 export const Transformers = new Map<
@@ -12,4 +13,5 @@ export const Transformers = new Map<
 	[ts.SyntaxKind.ClassDeclaration, VisitClassDeclaration],
 	[ts.SyntaxKind.InterfaceDeclaration, VisitInterfaceDeclaration],
 	[ts.SyntaxKind.CallExpression, VisitCallExpression],
+	[ts.SyntaxKind.FunctionDeclaration, VisitFunctionDeclaration],
 ]);

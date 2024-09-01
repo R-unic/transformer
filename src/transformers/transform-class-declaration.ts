@@ -4,7 +4,8 @@ import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
 
 export function VisitClassDeclaration(context: TransformContext, node: ts.ClassDeclaration) {
-	const typeDescription = GenerateTypeDescriptionFromNode(node);
+	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node));
 	return [
 		context.Transform(node),
 		ReflectionRuntime.RegisterType(typeDescription.FullName, typeDescription),

@@ -3,6 +3,7 @@ import ts, { Expression } from "typescript";
 import { ConvertArrayToExpression } from "./array-builder";
 import { ConvertMapToExpression } from "./map-builder";
 import { ConvertObjectToExpression } from "./object-builder";
+import { IsNode } from "../helpers";
 
 type Collections = "array" | "map";
 type Primities = "string" | "number" | "boolean" | "undefined" | "object" | "function" | "bigint" | "symbol";
@@ -28,11 +29,6 @@ function TypeofCollection(value: any) {
 			return key;
 		}
 	}
-}
-
-function IsNode(value: any): boolean {
-	if (typeof value !== "object") return false;
-	return "kind" in value && "parent" in value;
 }
 
 export const ConvertValueToExpression = (value: any) => {

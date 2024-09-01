@@ -28,6 +28,11 @@ export function getSymbol(type: ts.Type): ts.Symbol {
 	return type.aliasSymbol || type.symbol;
 }
 
+export function IsNode(value: any): boolean {
+	if (typeof value !== "object") return false;
+	return "kind" in value && "parent" in value;
+}
+
 const packageJsons = new Map<string, { packageName: string; tsConfigPath: string }>(); // path -> { packageName, tsConfigPath }
 const tsconfigs = new Map<string, { srcDir: string; outDir: string; packagePath: string }>(); // path -> { srcDir, outDir packagePath }
 
@@ -172,6 +177,22 @@ function GetSymbolUID(type: ts.Type) {
 		path.relative(PackagePath, filePath).replace(PATH_SEPARATOR_REGEX, "/").replace(EXTENSION, "");
 
 	return filePath + "#" + symbol.getName();
+}
+
+export function GetTypeName(type: ts.Type) {
+	if (type.symbol) {
+		return type.symbol.name;
+	} else if (IsDefinedType(type)) {
+		return `defined`;
+	} else if (type.flags & ts.TypeFlags.Intrinsic) {
+		return (type as ts.IntrinsicType).intrinsicName;
+	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
+		return `${(type as ts.NumberLiteralType).value}`;
+	} else if (type.flags & ts.TypeFlags.StringLiteral) {
+		return (type as ts.StringLiteralType).value;
+	}
+
+	return "Unknown";
 }
 
 export function GetTypeUid(type: ts.Type) {
