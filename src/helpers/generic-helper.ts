@@ -2,7 +2,7 @@ import ts, { factory } from "typescript";
 import { getSymbol } from ".";
 import { ReflectionRuntime } from "../reflect-runtime";
 
-export const GENERIC_ARRAY = "__GENERIC_ARRAY";
+export const GENERICS_ARRAY = "__GENERICS_ARRAY";
 let DefinedGenerics: ts.Type[] | undefined = undefined;
 
 export function DefineGenerics(types: ts.Type[]) {
@@ -33,7 +33,7 @@ export function GenerateUnpackGenerics(factory: ts.NodeFactory) {
 		factory.createVariableDeclarationList(
 			[
 				factory.createVariableDeclaration(
-					factory.createIdentifier(GENERIC_ARRAY),
+					factory.createIdentifier(GENERICS_ARRAY),
 					undefined,
 					undefined,
 					ReflectionRuntime.GetGenericParameters(),
@@ -46,7 +46,7 @@ export function GenerateUnpackGenerics(factory: ts.NodeFactory) {
 
 export function GenerateIndexOfGenerics(index: number) {
 	return factory.createElementAccessExpression(
-		factory.createIdentifier(GENERIC_ARRAY),
+		factory.createIdentifier(GENERICS_ARRAY),
 		factory.createNumericLiteral(`${index}`),
 	);
 }
