@@ -4,22 +4,36 @@ export type PackageInfo = {
 };
 
 export interface Type {
-	Name: string;
-	FullName: string;
-	BaseType: Type | undefined;
-	Interfaces: Type[];
-	Properties: Property[];
-	Methods: Method[];
+	readonly Name: string;
+	readonly FullName: string;
+	readonly Value?: unknown;
+	readonly Constructor?: ConstructorInfo;
+	readonly BaseType: Type | undefined;
+	readonly Interfaces: Type[];
+	readonly Properties: Property[];
+	readonly Methods: Method[];
+}
+
+export interface Parameter {
+	readonly Name: string;
+	readonly Type: Type;
+	readonly Optional: boolean;
 }
 
 export interface Method {
 	readonly Name: string;
 	readonly ReturnType: Type;
-	readonly Parameters: Type[];
+	readonly Parameters: Parameter[];
 	readonly AccessModifier: number;
 	readonly IsStatic: boolean;
 	readonly IsAbstract: boolean;
-	//readonly Callback: (context: unknown, ...args: unknown[]) => unknown;
+	readonly Callback: (context: unknown, ...args: unknown[]) => unknown;
+}
+
+export interface ConstructorInfo {
+	readonly Parameters: Parameter[];
+	readonly AccessModifier: number;
+	readonly Callback: (...args: unknown[]) => unknown;
 }
 
 export interface Property {

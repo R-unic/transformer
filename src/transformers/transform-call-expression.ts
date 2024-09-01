@@ -1,17 +1,10 @@
 import ts from "typescript";
-import { GetTypeUid } from "../helpers";
+import { TransformMacro } from "../macro";
 import { TransformContext } from "../transformer";
-import { ConvertValueToExpression } from "../type-builders";
+import { VisitGetType } from "./transform-get-type";
 
 export function VisitCallExpression(state: TransformContext, node: ts.CallExpression) {
-	const fullName = node.expression.getText();
-	if (fullName !== "$Indefine") return state.Transform(node);
-
-	const typeChecker = state.typeChecker;
-	const typeArgument = node.typeArguments?.[0];
-	if (!typeArgument) return state.Transform(node);
-
-	const id = GetTypeUid(typeChecker.getTypeFromTypeNode(typeArgument));
-
-	return ConvertValueToExpression(id);
+	const newNode = TransformMacro(node);
+	const nodes = [VisitGetType(state, node), newNode].filter((v) => v !== undefined) as ts.Expression[];
+	return nodes.length > 0 ? nodes : state.Transform(node);
 }

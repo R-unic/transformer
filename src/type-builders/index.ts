@@ -30,8 +30,13 @@ function TypeofCollection(value: any) {
 	}
 }
 
+function IsNode(value: any): boolean {
+	if (typeof value !== "object") return false;
+	return "kind" in value && "parent" in value;
+}
+
 export const ConvertValueToExpression = (value: any) => {
-	if (value && ts.isNode(value)) return value;
+	if (value && IsNode(value)) return value as ts.Expression;
 
 	const typeName = typeof value;
 	let builder = TypeBuilders.get(typeName);

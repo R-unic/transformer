@@ -1,6 +1,6 @@
-import ts, { MethodDeclaration, MethodSignature, NodeArray } from "typescript";
+import ts, { ConstructorDeclaration, factory, MethodDeclaration, MethodSignature, NodeArray } from "typescript";
 import { getDeclaration, getSymbol, getType, GetTypeUid } from ".";
-import { Method, Property, Type } from "../declarations";
+import { ConstructorInfo, Method, Parameter, Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
@@ -109,21 +109,38 @@ function GetBaseType(type: ts.Type) {
 	return baseType ? ReflectionRuntime.GetType(GetTypeUid(baseType)) : undefined;
 }
 
-function GenerateMethodDescription(method: ts.MethodDeclaration | ts.MethodSignature): Method {
+function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {
 	const typeChecker = TransformContext.Instance.typeChecker;
-	const signature = typeChecker.getSignatureFromDeclaration(method);
-	if (!signature) throw new Error(`Could not find signature for ${method.name.getText()}`);
+
+	if (!parameter.type) throw new Error(`Could not find type for ${parameter.name.getText()}`);
+	const type = typeChecker.getTypeFromTypeNode(parameter.type);
 
 	return {
-		Name: method.name.getText(),
-		Parameters: method.parameters.map((parameter) =>
-			GetTypeDescription(ExcludeUndefined(typeChecker.getTypeAtLocation(parameter))),
-		),
+		Name: parameter.name.getText(),
+		Optional: parameter.questionToken !== undefined,
+		Type: GetTypeDescription(ExcludeUndefined(type)),
+	};
+}
+
+function GenerateMethodDescription(method: ts.MethodDeclaration | ts.MethodSignature, ctor: ts.Declaration): Method {
+	const typeChecker = TransformContext.Instance.typeChecker;
+	const signature = typeChecker.getSignatureFromDeclaration(method);
+	const methodName = method.name.getText();
+	if (!signature) throw new Error(`Could not find signature for ${method.name.getText()}`);
+
+	const ctorSymbol = getSymbol(typeChecker.getTypeAtLocation(ctor));
+
+	return {
+		Name: methodName,
+		Parameters: method.parameters.map((parameter) => GenerateParameterDescription(parameter)),
 		ReturnType: GetTypeDescription(ExcludeUndefined(signature.getReturnType())),
 		AccessModifier: GetAccessModifier(method.modifiers),
 		IsStatic: method.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword) !== undefined,
 		IsAbstract: method.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.AbstractKeyword) !== undefined,
-		//Callback: undefined,
+		Callback: ReflectionRuntime.GetMethodCallback(
+			factory.createIdentifier(ctorSymbol.escapedName.toString()),
+			methodName,
+		),
 	};
 }
 
@@ -134,7 +151,27 @@ function GetMethods(node: ts.Node) {
 		| MethodDeclaration
 		| MethodSignature
 	)[];
-	return methodDeclarations.map((v) => GenerateMethodDescription(v));
+	return methodDeclarations.map((v) => GenerateMethodDescription(v, node));
+}
+
+function GetConstructor(node: ts.Node): ConstructorInfo | undefined {
+	if (!ts.isClassDeclaration(node)) return;
+
+	const constructor = node.members.find((member) => ts.isConstructorDeclaration(member)) as ConstructorDeclaration;
+	if (!constructor) return;
+
+	return {
+		Parameters: constructor.parameters.map((parameter) => GenerateParameterDescription(parameter)),
+		AccessModifier: GetAccessModifier(constructor.modifiers),
+		Callback: ReflectionRuntime.GetConstructorCallback(factory.createIdentifier(node.name!.getText())),
+	};
+}
+
+function GetReferenseValue(type: ts.Type) {
+	const declaration = type.symbol?.valueDeclaration;
+	if (!declaration) return;
+
+	return factory.createIdentifier(type.symbol.escapedName.toString());
 }
 
 export function GenerateTypeDescriptionFromNode(node: ts.Node): Type {
@@ -145,6 +182,8 @@ export function GenerateTypeDescriptionFromNode(node: ts.Node): Type {
 	return {
 		Name: type.symbol?.name ?? "",
 		FullName: fullName,
+		Value: GetReferenseValue(type),
+		Constructor: GetConstructor(node),
 		BaseType: GetBaseType(type),
 		Interfaces: GetInterfaces(node),
 		Properties: GetProperties(node),
