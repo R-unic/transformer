@@ -5,6 +5,7 @@ import { VisitCallExpression } from "./transform-call-expression";
 import { VisitClassDeclaration } from "./transform-class-declaration";
 import { VisitFunctionDeclaration } from "./transform-function-declaration";
 import { VisitInterfaceDeclaration } from "./transform-interface-declaration";
+import { VisitArrowFunction } from "./transform-arrow-function";
 
 export const Transformers = new Map<
 	ts.SyntaxKind,
@@ -14,4 +15,5 @@ export const Transformers = new Map<
 	[ts.SyntaxKind.InterfaceDeclaration, VisitInterfaceDeclaration],
 	[ts.SyntaxKind.CallExpression, VisitCallExpression],
 	[ts.SyntaxKind.FunctionDeclaration, VisitFunctionDeclaration],
+	[ts.SyntaxKind.ArrowFunction, VisitArrowFunction],
 ]);
