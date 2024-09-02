@@ -10,11 +10,11 @@ function TransformGetType(node: ts.CallExpression, typeId: string | ts.ElementAc
 
 export function VisitGetType(state: TransformContext, node: ts.CallExpression) {
 	const name = node.expression.getText();
-	if (name !== "GetType") return node;
+	if (name !== "GetType") return;
 
 	// TODO: Add check import
 
-	if (!node.typeArguments) return node;
+	if (!node.typeArguments) return;
 
 	const typeChecker = state.typeChecker;
 	const typeArgument = node.typeArguments[0];

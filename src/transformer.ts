@@ -54,8 +54,8 @@ export class TransformContext {
 		this.addedNodes = [];
 	}
 
-	public AddNode(node: ts.Node) {
-		this.addedNodes.push(node);
+	public AddNode(node: ts.Node | ts.Node[]) {
+		this.addedNodes.push(...(Array.isArray(node) ? node : [node]));
 	}
 
 	private getPackage(root: string, recursiveCheck: boolean = false): PackageInfo {
