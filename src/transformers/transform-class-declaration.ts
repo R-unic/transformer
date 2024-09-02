@@ -6,9 +6,17 @@ import { TransformContext } from "../transformer";
 export function VisitClassDeclaration(context: TransformContext, node: ts.ClassDeclaration) {
 	const typeChecker = TransformContext.Instance.typeChecker;
 	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node));
-	return [
-		context.Transform(node),
-		ReflectionRuntime.RegisterType(typeDescription.FullName, typeDescription),
-		ReflectionRuntime.RegisterDataType(factory.createIdentifier(typeDescription.Name), typeDescription.FullName),
-	];
+	const modifiers = node.modifiers ?? ([] as ts.Modifier[]);
+
+	return factory.updateClassDeclaration(
+		node,
+		[
+			...modifiers,
+			factory.createDecorator(ReflectionRuntime.RegisterTypeDecorator(typeDescription.FullName, typeDescription)),
+		],
+		node.name,
+		node.typeParameters,
+		node.heritageClauses,
+		node.members,
+	);
 }

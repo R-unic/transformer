@@ -41,8 +41,20 @@ export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(c
 	}
 
 	const updatedNode = context.Transform(node);
-	const block = updatedNode.body as ts.Block;
+	let block = updatedNode.body;
 	ClearDefinedGenerics();
 
-	return [updatedNode, context.factory.updateBlock(block, [...additionalNodes, ...block.statements])] as const;
+	if (block && ts.isBlock(block)) {
+		block = context.factory.updateBlock(block, [...additionalNodes, ...block.statements]);
+	}
+
+	if (block && !ts.isBlock(block)) {
+		block = context.factory.createBlock([...additionalNodes, factory.createReturnStatement(block)], true);
+	}
+
+	if (!block) {
+		block = context.factory.createBlock([...additionalNodes], true);
+	}
+
+	return [updatedNode, block] as const;
 }

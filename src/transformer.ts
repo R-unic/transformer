@@ -4,6 +4,7 @@ import path from "path";
 import ts, { ImportDeclaration } from "typescript";
 import { ConfigObject, createConfig } from "./config";
 import { PackageInfo } from "./declarations";
+import { CreateIDGenerator } from "./helpers";
 import { LibraryName } from "./project-config.json";
 import { Transformers } from "./transformers";
 
@@ -29,6 +30,7 @@ export class TransformContext {
 	private config!: ConfigObject;
 	private importSpecs = new Set<string>();
 	private addedNodes: ts.Node[] = [];
+	private generator = CreateIDGenerator();
 
 	constructor(
 		public program: ts.Program,
@@ -38,6 +40,10 @@ export class TransformContext {
 		this.typeChecker = program.getTypeChecker();
 		this.factory = context.factory;
 		this.prepareConfig(program);
+	}
+
+	public get NextID() {
+		return this.generator();
 	}
 
 	public get Config(): ConfigObject {
@@ -156,6 +162,7 @@ export class TransformContext {
 
 	public UpdateFile(sourceFile: ts.SourceFile) {
 		this.importSpecs.clear();
+		this.generator = CreateIDGenerator();
 
 		sourceFile = this.Transform(sourceFile);
 		if (this.importSpecs.size === 0) return sourceFile;

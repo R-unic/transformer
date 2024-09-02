@@ -5,6 +5,7 @@ export interface IReflectionRuntime {
 	RegisterType(id: string, type: Type): ts.ExpressionStatement;
 	RegisterTypes(...args: { name: string; _type: Type }[]): ts.ExpressionStatement;
 	RegisterDataType(instance: ts.Identifier, typeId: string): ts.ExpressionStatement;
+	RegisterTypeDecorator(id: string, type: Type): ts.Expression;
 	SetupGenericParameters(params: (string | ts.Node)[]): ts.ExpressionStatement;
 	SetupDefaultGenericParameters(defined: ts.Identifier, params: [number, ts.Expression][]): ts.ExpressionStatement;
 	GetGenericParameters(): ts.Expression;

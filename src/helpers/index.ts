@@ -179,6 +179,14 @@ function GetSymbolUID(type: ts.Type) {
 	return filePath + "#" + symbol.getName();
 }
 
+export function CreateIDGenerator() {
+	let index = 0;
+	return () => {
+		index++;
+		return index;
+	};
+}
+
 export function GetTypeName(type: ts.Type) {
 	if (type.symbol) {
 		return type.symbol.name;

@@ -2,6 +2,7 @@ import ts, { factory } from "typescript";
 import { getSymbol, GetTypeUid } from ".";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { ConvertValueToExpression } from "../type-builders";
+import { TransformContext } from "../transformer";
 
 export const GENERICS_ARRAY = "__GENERICS_ARRAY";
 let DefinedGenerics: ts.Type[] | undefined = undefined;
@@ -42,6 +43,26 @@ export function GenerateUnpackGenerics(factory: ts.NodeFactory) {
 			],
 			ts.NodeFlags.Const,
 		),
+	);
+}
+
+export function GenerateSetupGenericParameters(node: ts.CallExpression) {
+	if (!node.typeArguments) throw new Error("No type arguments");
+
+	return ReflectionRuntime.SetupGenericParameters(
+		node.typeArguments.map((node) => {
+			const type = TransformContext.Instance.typeChecker.getTypeFromTypeNode(node);
+
+			if (type.isTypeParameter()) {
+				const index = GetGenericIndex(type);
+
+				if (index !== undefined) {
+					return GenerateIndexOfGenerics(index);
+				}
+			}
+
+			return GetTypeUid(type);
+		}),
 	);
 }
 
