@@ -2,19 +2,21 @@ import ts from "typescript";
 import { TransformContext } from "../transformer";
 import { TransformAnyFunction } from "./transform-any-function";
 
-export function VisitArrowFunction(context: TransformContext, node: ts.ArrowFunction) {
+export function VisitMethodDeclaration(context: TransformContext, node: ts.MethodDeclaration) {
 	const result = TransformAnyFunction(context, node);
 	if (!result) return context.Transform(node);
 
 	const [updatedNode, block] = result;
 
-	return context.factory.updateArrowFunction(
+	return context.factory.updateMethodDeclaration(
 		updatedNode,
 		updatedNode.modifiers,
+		updatedNode.asteriskToken,
+		updatedNode.name,
+		updatedNode.questionToken,
 		updatedNode.typeParameters,
 		updatedNode.parameters,
 		updatedNode.type,
-		updatedNode.equalsGreaterThanToken,
 		block,
 	);
 }

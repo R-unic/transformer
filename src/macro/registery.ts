@@ -19,7 +19,7 @@ export function TransformRegistery(node: ts.CallExpression) {
 	if (type.isUnion()) {
 		const types = type.types.map((type) => {
 			const description = ConvertType(type);
-			return { name: description.Name, _type: description };
+			return { name: description.FullName, _type: description };
 		});
 
 		return ReflectionRuntime.RegisterTypes(...types);
