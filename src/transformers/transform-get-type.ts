@@ -9,6 +9,8 @@ function TransformGetType(node: ts.CallExpression, typeId: string | ts.ElementAc
 }
 
 export function VisitGetType(state: TransformContext, node: ts.CallExpression) {
+	if (!node.parent) return;
+
 	const name = node.expression.getText();
 	if (name !== "GetType") return;
 

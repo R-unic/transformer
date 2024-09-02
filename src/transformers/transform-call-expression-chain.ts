@@ -20,5 +20,5 @@ export function TransformCallExpressionChain(state: TransformContext, node: ts.C
 		state.AddNode(nodes);
 	}
 
-	return identifierName ? factory.createIdentifier(identifierName) : state.Transform(node);
+	return identifierName ? factory.createIdentifier(identifierName) : node;
 }

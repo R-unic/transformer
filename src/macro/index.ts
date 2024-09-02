@@ -9,6 +9,8 @@ export const Macros = new Map<string, (node: any) => ts.Expression | ts.Statemen
 ]);
 
 export function TransformMacro(node: ts.CallExpression) {
+	if (!node.parent) return;
+
 	const name = node.expression.getText();
 	const macro = Macros.get(name);
 	if (!macro) return;
