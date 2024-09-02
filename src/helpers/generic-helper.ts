@@ -1,6 +1,7 @@
 import ts, { factory } from "typescript";
-import { getSymbol } from ".";
+import { getSymbol, GetTypeUid } from ".";
 import { ReflectionRuntime } from "../reflect-runtime";
+import { ConvertValueToExpression } from "../type-builders";
 
 export const GENERICS_ARRAY = "__GENERICS_ARRAY";
 let DefinedGenerics: ts.Type[] | undefined = undefined;
@@ -42,6 +43,18 @@ export function GenerateUnpackGenerics(factory: ts.NodeFactory) {
 			ts.NodeFlags.Const,
 		),
 	);
+}
+
+export function GenerateTypeUIDUsingGenerics(type: ts.Type) {
+	if (type.isTypeParameter()) {
+		const index = GetGenericIndex(type);
+
+		if (index !== undefined) {
+			return GenerateIndexOfGenerics(index);
+		}
+	}
+
+	return ConvertValueToExpression(GetTypeUid(type));
 }
 
 export function GenerateIndexOfGenerics(index: number) {
