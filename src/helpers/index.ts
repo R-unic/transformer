@@ -211,6 +211,7 @@ export function GetTypeName(type: ts.Type) {
 		if (name === "true" || name === "false") {
 			return "boolean";
 		}
+		return name;
 	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
 		return `${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
