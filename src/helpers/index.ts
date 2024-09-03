@@ -207,7 +207,10 @@ export function GetTypeName(type: ts.Type) {
 	} else if (IsDefinedType(type)) {
 		return `defined`;
 	} else if (type.flags & ts.TypeFlags.Intrinsic) {
-		return (type as ts.IntrinsicType).intrinsicName;
+		const name = (type as ts.IntrinsicType).intrinsicName;
+		if (name === "true" || name === "false") {
+			return "boolean";
+		}
 	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
 		return `${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
@@ -243,7 +246,10 @@ export function GetTypeUid(type: ts.Type) {
 	} else if (IsDefinedType(type)) {
 		return `Primitive:defined`;
 	} else if (type.flags & ts.TypeFlags.Intrinsic) {
-		return `Primitive:${(type as ts.IntrinsicType).intrinsicName}`;
+		const name = (type as ts.IntrinsicType).intrinsicName;
+		if (name === "true" || name === "false") {
+			return "Primitive:boolean";
+		}
 	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
 		return `PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
