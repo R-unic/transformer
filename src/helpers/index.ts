@@ -251,6 +251,7 @@ export function GetTypeUid(type: ts.Type) {
 		if (name === "true" || name === "false") {
 			return "Primitive:boolean";
 		}
+		return `Primitive:${name}`;
 	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
 		return `PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
