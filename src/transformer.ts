@@ -10,18 +10,6 @@ import { Transformers } from "./transformers";
 
 const UnknownPackageName = "@@this";
 
-/**
- * This is the transformer's configuration, the values are passed from the tsconfig.
- */
-export interface TransformerConfig {
-	_: void;
-}
-
-/**
- * This is a utility object to pass around your dependencies.
- *
- * You can also use this object to store state, e.g prereqs.
- */
 export class TransformContext {
 	public static Instance: TransformContext;
 	public readonly factory: ts.NodeFactory;
@@ -29,13 +17,10 @@ export class TransformContext {
 
 	private config!: ConfigObject;
 	private importSpecs = new Set<string>();
-	private addedNodes: ts.Node[] = [];
+	private addedNodes: ts.Statement[] = [];
 	private generator = CreateIDGenerator();
 
-	constructor(
-		public program: ts.Program,
-		public context: ts.TransformationContext, //public config: TransformerConfig,
-	) {
+	constructor(public program: ts.Program, public context: ts.TransformationContext) {
 		TransformContext.Instance = this;
 		this.typeChecker = program.getTypeChecker();
 		this.factory = context.factory;
@@ -54,7 +39,7 @@ export class TransformContext {
 		this.addedNodes = [];
 	}
 
-	public AddNode(node: ts.Node | ts.Node[]) {
+	public AddNode(node: ts.Statement | ts.Statement[]) {
 		this.addedNodes.push(...(Array.isArray(node) ? node : [node]));
 	}
 
@@ -193,12 +178,12 @@ export class TransformContext {
 				if (!ts.isStatementOrBlock(node)) {
 					return visitNode(this, node);
 				}
+
 				const prevNodes = this.addedNodes;
 				this.ClearAddedNodes();
 
 				const newNode = visitNode(this, node);
 				const newNodes = [...this.addedNodes, ...(Array.isArray(newNode) ? newNode : [newNode])];
-				this.ClearAddedNodes();
 				this.addedNodes = prevNodes;
 
 				return newNodes;

@@ -155,6 +155,20 @@ export function getType(symbol: ts.Symbol): ts.Type | undefined {
 	return typeChecker.getTypeOfSymbolAtLocation(symbol, declaration);
 }
 
+function GetSymbolNamespace(type: ts.Type) {
+	const symbol = getSymbol(type);
+	const declaration = getDeclaration(symbol);
+
+	if (!declaration) {
+		return "Unknown";
+	}
+
+	const filePath = declaration.getSourceFile().fileName;
+	const { PackageName } = getAssemblyInfoFromFilePath(filePath);
+
+	return PackageName;
+}
+
 function GetSymbolUID(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
@@ -201,6 +215,26 @@ export function GetTypeName(type: ts.Type) {
 	}
 
 	return "Unknown";
+}
+
+export function GetTypeNamespace(type: ts.Type) {
+	if (type.symbol) {
+		return GetSymbolNamespace(type);
+	}
+
+	return "Global";
+}
+
+export function IsPrimive(type: ts.Type) {
+	if (type.flags & ts.TypeFlags.Intrinsic) {
+		return true;
+	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
+		return true;
+	} else if (type.flags & ts.TypeFlags.StringLiteral) {
+		return true;
+	}
+
+	return false;
 }
 
 export function GetTypeUid(type: ts.Type) {

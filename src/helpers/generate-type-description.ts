@@ -1,9 +1,10 @@
 import ts, { ConstructorDeclaration, factory, MethodDeclaration, MethodSignature, NodeArray } from "typescript";
-import { getDeclaration, getSymbol, getType, GetTypeName, GetTypeUid } from ".";
+import { getDeclaration, getSymbol, getType, GetTypeName, GetTypeNamespace, GetTypeUid } from ".";
 import { ConstructorInfo, Method, Parameter, Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
+import { GetTypeKind } from "./get-type-kind";
 
 function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
@@ -181,11 +182,13 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
 	return {
 		Name: GetTypeName(type),
 		FullName: fullName,
+		Namespace: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
 		Constructor: GetConstructor(declaration),
 		BaseType: GetBaseType(type),
 		Interfaces: GetInterfaces(declaration),
 		Properties: GetProperties(type),
 		Methods: GetMethods(declaration),
+		Kind: GetTypeKind(type),
 	};
 }

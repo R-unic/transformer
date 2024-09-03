@@ -6,8 +6,10 @@ export type PackageInfo = {
 export interface Type {
 	readonly Name: string;
 	readonly FullName: string;
+	readonly Namespace: string;
 	readonly Value?: unknown;
 	readonly Constructor?: ConstructorInfo;
+	readonly Kind: TypeKind;
 	readonly BaseType: Type | undefined;
 	readonly Interfaces: Type[];
 	readonly Properties: Property[];

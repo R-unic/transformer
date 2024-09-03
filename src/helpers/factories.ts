@@ -9,3 +9,10 @@ export function CreateVarriable(name: string, initializer?: ts.Expression) {
 		),
 	);
 }
+
+export function PasteNodeInStaticBlock(node: ts.ClassDeclaration, nodes: ts.Statement[]) {
+	return factory.updateClassDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, [
+		factory.createClassStaticBlockDeclaration(factory.createBlock(nodes, true)),
+		...node.members,
+	]);
+}

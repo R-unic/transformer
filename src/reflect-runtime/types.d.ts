@@ -2,8 +2,8 @@ import ts from "typescript";
 import { Type } from "../declarations";
 
 export interface IReflectionRuntime {
-	RegisterType(id: string, type: Type): ts.ExpressionStatement;
-	RegisterTypes(...args: { name: string; _type: Type }[]): ts.ExpressionStatement;
+	RegisterType(type: Type): ts.ExpressionStatement;
+	RegisterTypes(...args: Type[]): ts.ExpressionStatement;
 	RegisterDataType(instance: ts.Identifier, typeId: string): ts.ExpressionStatement;
 	SetupGenericParameters(params: (string | ts.Node)[]): ts.ExpressionStatement;
 	SetupDefaultGenericParameters(defined: ts.Identifier, params: [number, ts.Expression][]): ts.ExpressionStatement;

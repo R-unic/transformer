@@ -3,6 +3,7 @@ import { TransformMacro } from "../macro";
 import { TransformContext } from "../transformer";
 import { TransformCallExpressionChain } from "./transform-call-expression-chain";
 import { VisitGetType } from "./transform-get-type";
+import { VisitGetTypes } from "./transform-get-types";
 
 export function VisitCallExpression(state: TransformContext, node: ts.CallExpression) {
 	let newNode = TransformMacro(node);
@@ -11,6 +12,11 @@ export function VisitCallExpression(state: TransformContext, node: ts.CallExpres
 	}
 
 	newNode = VisitGetType(state, node);
+	if (newNode) {
+		return newNode;
+	}
+
+	newNode = VisitGetTypes(state, node);
 	if (newNode) {
 		return newNode;
 	}

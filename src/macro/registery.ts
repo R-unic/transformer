@@ -3,12 +3,6 @@ import { GenerateTypeDescriptionFromNode } from "../helpers/generate-type-descri
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
 
-function ConvertType(type: ts.Type) {
-	const typeDescription = GenerateTypeDescriptionFromNode(type);
-
-	return typeDescription;
-}
-
 export function TransformRegistery(node: ts.CallExpression) {
 	const typeChecker = TransformContext.Instance.typeChecker;
 	const typeArgument = node.typeArguments?.[0];
@@ -17,14 +11,9 @@ export function TransformRegistery(node: ts.CallExpression) {
 	const type = typeChecker.getTypeFromTypeNode(typeArgument);
 
 	if (type.isUnion()) {
-		const types = type.types.map((type) => {
-			const description = ConvertType(type);
-			return { name: description.FullName, _type: description };
-		});
-
+		const types = type.types.map(GenerateTypeDescriptionFromNode);
 		return ReflectionRuntime.RegisterTypes(...types);
 	}
 
-	const description = ConvertType(type);
-	return ReflectionRuntime.RegisterType(description.FullName, description);
+	return ReflectionRuntime.RegisterType(GenerateTypeDescriptionFromNode(type));
 }
