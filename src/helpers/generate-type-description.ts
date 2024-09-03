@@ -12,7 +12,7 @@ function GetReferenceType(type: ts.Type) {
 
 	if (!declaration || !ts.isTypeLiteralNode(declaration)) {
 		const fullName = GetTypeUid(type);
-		return ReflectionRuntime.GetType(fullName);
+		return ReflectionRuntime.__GetType(fullName);
 	}
 
 	return GenerateTypeDescriptionFromNode(type);
@@ -104,7 +104,7 @@ function GetProperties(type: ts.Type): Property[] {
 
 function GetBaseType(type: ts.Type) {
 	const baseType = (type.getBaseTypes() ?? [])[0];
-	return baseType ? ReflectionRuntime.GetType(GetTypeUid(baseType)) : undefined;
+	return baseType ? ReflectionRuntime.__GetType(GetTypeUid(baseType)) : undefined;
 }
 
 function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {

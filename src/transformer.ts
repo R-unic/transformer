@@ -19,6 +19,8 @@ export class TransformContext {
 	private importSpecs = new Set<string>();
 	private addedNodes: ts.Statement[] = [];
 	private generator = CreateIDGenerator();
+	private sourceFile!: ts.SourceFile;
+	private cachedImport?: [ts.ImportDeclaration, number];
 
 	constructor(public program: ts.Program, public context: ts.TransformationContext) {
 		TransformContext.Instance = this;
@@ -41,6 +43,18 @@ export class TransformContext {
 
 	public AddNode(node: ts.Statement | ts.Statement[]) {
 		this.addedNodes.push(...(Array.isArray(node) ? node : [node]));
+	}
+
+	public HaveImported(name: string) {
+		if (this.importSpecs.has(name)) return true;
+
+		const [importDecl] = this.findImport(this.sourceFile.statements);
+		if (!importDecl) return false;
+
+		const importBindings = importDecl.importClause?.namedBindings;
+		if (!importBindings || !ts.isNamedImports(importBindings)) return false;
+
+		return importBindings.elements.find((element) => element.name.getText() === name) !== undefined;
 	}
 
 	private getPackage(root: string, recursiveCheck: boolean = false): PackageInfo {
@@ -132,6 +146,7 @@ export class TransformContext {
 	}
 
 	private findImport(statements: ts.NodeArray<ts.Statement>) {
+		if (this.cachedImport) return this.cachedImport;
 		const libraryName = `"${LibraryName}"`;
 
 		const index = statements.findIndex((element) => {
@@ -140,6 +155,10 @@ export class TransformContext {
 			return element.moduleSpecifier.getText() === libraryName;
 		});
 
+		if (index !== -1) {
+			this.cachedImport = [statements[index] as ImportDeclaration, index];
+		}
+
 		return index >= 0
 			? ([statements[index] as ImportDeclaration, index] as const)
 			: ([undefined, undefined] as const);
@@ -147,6 +166,8 @@ export class TransformContext {
 
 	public UpdateFile(sourceFile: ts.SourceFile) {
 		this.importSpecs.clear();
+		this.cachedImport = undefined;
+		this.sourceFile = sourceFile;
 		this.generator = CreateIDGenerator();
 
 		sourceFile = this.Transform(sourceFile);

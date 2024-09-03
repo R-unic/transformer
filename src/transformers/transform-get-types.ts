@@ -7,6 +7,7 @@ export function VisitGetTypes(state: TransformContext, node: ts.CallExpression) 
 
 	const name = node.expression.getText();
 	if (name !== "GetTypes") return;
+	if (!state.HaveImported("GetTypes")) return;
 
 	const typeChecker = state.typeChecker;
 	const argument = node.arguments[0];

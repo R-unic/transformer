@@ -8,7 +8,7 @@ export interface IReflectionRuntime {
 	SetupGenericParameters(params: (string | ts.Node)[]): ts.ExpressionStatement;
 	SetupDefaultGenericParameters(defined: ts.Identifier, params: [number, ts.Expression][]): ts.ExpressionStatement;
 	GetGenericParameters(): ts.Expression;
-	GetType(id: string): Type;
+	__GetType(id: string): Type;
 	GetMethodCallback(ctor: ts.Identifier, name: string): (context: unknown, ...args: unknown[]) => unknown;
 	GetConstructorCallback(ctor: ts.Identifier): (...args: unknown[]) => unknown;
 }
