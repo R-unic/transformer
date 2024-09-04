@@ -4,6 +4,7 @@ import { TransformContext } from "../transformer";
 import { TransformCallExpressionChain } from "./transform-call-expression-chain";
 import { VisitGetType } from "./transform-get-type";
 import { VisitGetTypes } from "./transform-get-types";
+import { VisitCreateAttribute } from "./transform-create-attribute";
 
 export function VisitCallExpression(state: TransformContext, node: ts.CallExpression) {
 	let newNode = TransformMacro(node);
@@ -17,6 +18,11 @@ export function VisitCallExpression(state: TransformContext, node: ts.CallExpres
 	}
 
 	newNode = VisitGetTypes(state, node);
+	if (newNode) {
+		return newNode;
+	}
+
+	newNode = VisitCreateAttribute(state, node);
 	if (newNode) {
 		return newNode;
 	}

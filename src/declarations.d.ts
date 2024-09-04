@@ -3,10 +3,12 @@ export type PackageInfo = {
 	name: string;
 };
 
+export type AttributeVid = "class" | "method" | "property" | "parameter";
+
 export interface Type {
 	readonly Name: string;
 	readonly FullName: string;
-	readonly Namespace: string;
+	readonly Assembly: string;
 	readonly Value?: unknown;
 	readonly Constructor?: ConstructorInfo;
 	readonly Kind: TypeKind;

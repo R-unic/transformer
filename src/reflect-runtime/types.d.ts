@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { Type } from "../declarations";
+import { AttributeVid, Type } from "../declarations";
 
 export interface IReflectionRuntime {
 	RegisterType(type: Type): ts.ExpressionStatement;
@@ -9,6 +9,7 @@ export interface IReflectionRuntime {
 	SetupDefaultGenericParameters(defined: ts.Identifier, params: [number, ts.Expression][]): ts.ExpressionStatement;
 	GetGenericParameters(): ts.Expression;
 	__GetType(id: string): Type;
+	SetupKindForAttribute(vid: AttributeVid, args: unknown[]): ts.ExpressionStatement;
 	GetMethodCallback(ctor: ts.Identifier, name: string): (context: unknown, ...args: unknown[]) => unknown;
 	GetConstructorCallback(ctor: ts.Identifier): (...args: unknown[]) => unknown;
 }

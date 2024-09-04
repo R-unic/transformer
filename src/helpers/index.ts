@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
 import path from "path";
-import ts from "typescript";
+import ts, { factory } from "typescript";
 import { TransformContext } from "../transformer";
 
 const nodeModulesPattern = "/node_modules/";
@@ -169,15 +169,7 @@ function GetSymbolNamespace(type: ts.Type) {
 	return PackageName;
 }
 
-function GetSymbolUID(type: ts.Type) {
-	const symbol = getSymbol(type);
-	const declaration = getDeclaration(symbol);
-
-	if (!declaration) {
-		return "Unknown";
-	}
-
-	let filePath = declaration.getSourceFile().fileName;
+export function GenerateUID(filePath: string, name: string) {
 	const nodeModulesIndex = filePath.lastIndexOf(nodeModulesPattern);
 	const { PackageName, SrcDir, OutDir, PackagePath } = getAssemblyInfoFromFilePath(filePath);
 
@@ -190,7 +182,17 @@ function GetSymbolUID(type: ts.Type) {
 		":" +
 		path.relative(PackagePath, filePath).replace(PATH_SEPARATOR_REGEX, "/").replace(EXTENSION, "");
 
-	return filePath + "#" + symbol.getName();
+	return filePath + "#" + name;
+}
+
+export function GetSymbolUID(symbol: ts.Symbol) {
+	const declaration = getDeclaration(symbol);
+
+	if (!declaration) {
+		return "Unknown";
+	}
+
+	return GenerateUID(declaration.getSourceFile().fileName, symbol.name);
 }
 
 export function CreateIDGenerator() {
@@ -241,9 +243,13 @@ export function IsPrimive(type: ts.Type) {
 	return false;
 }
 
+export function WrapInNeverExpression(expression: ts.Expression) {
+	return factory.createAsExpression(expression, factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword));
+}
+
 export function GetTypeUid(type: ts.Type) {
 	if (type.symbol) {
-		return GetSymbolUID(type);
+		return GetSymbolUID(getSymbol(type));
 	} else if (IsDefinedType(type)) {
 		return `Primitive:defined`;
 	} else if (type.flags & ts.TypeFlags.Intrinsic) {
@@ -258,5 +264,5 @@ export function GetTypeUid(type: ts.Type) {
 		return `PrimitiveString:${(type as ts.StringLiteralType).value}`;
 	}
 
-	return "Unknown";
+	return "UnknownType";
 }

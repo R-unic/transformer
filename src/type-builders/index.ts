@@ -3,7 +3,7 @@ import ts, { Expression } from "typescript";
 import { ConvertArrayToExpression } from "./array-builder";
 import { ConvertMapToExpression } from "./map-builder";
 import { ConvertObjectToExpression } from "./object-builder";
-import { IsNode } from "../helpers";
+import { IsNode, WrapInNeverExpression } from "../helpers";
 
 type Collections = "array" | "map";
 type Primities = "string" | "number" | "boolean" | "undefined" | "object" | "function" | "bigint" | "symbol";
@@ -52,6 +52,6 @@ export const ConvertValueToCallExpression = (name: string, args: any[]) => {
 	return ts.factory.createCallExpression(
 		ts.factory.createIdentifier(name),
 		undefined,
-		args.map(ConvertValueToExpression),
+		args.map((v) => WrapInNeverExpression(ConvertValueToExpression(v))),
 	);
 };

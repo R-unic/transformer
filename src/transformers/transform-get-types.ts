@@ -19,7 +19,7 @@ export function VisitGetTypes(state: TransformContext, node: ts.CallExpression) 
 
 	const propType = getType(prop);
 	if (!propType || !propType.isLiteral()) return;
-	if (propType.value !== "CurrentNamespace") return;
+	if (propType.value !== "CurrentAssembly") return;
 
 	return factory.updateCallExpression(node, node.expression, node.typeArguments, [
 		factory.createStringLiteral(state.Config.packageName),

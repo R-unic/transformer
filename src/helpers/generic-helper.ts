@@ -3,6 +3,7 @@ import { getSymbol, GetTypeUid } from ".";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { ConvertValueToExpression } from "../type-builders";
 import { TransformContext } from "../transformer";
+import { GenerateGenericsFromAttributeApi } from "../transformers/transform-attribute-api";
 
 export const GENERICS_ARRAY = "__GENERICS_ARRAY";
 let DefinedGenerics: ts.Type[] | undefined = undefined;
@@ -48,6 +49,10 @@ export function GenerateUnpackGenerics(factory: ts.NodeFactory) {
 
 export function GenerateSetupGenericParameters(node: ts.CallExpression) {
 	if (!node.typeArguments) throw new Error("No type arguments");
+
+	// For attribute API
+	const newNode = GenerateGenericsFromAttributeApi(node);
+	if (newNode) return newNode;
 
 	return ReflectionRuntime.SetupGenericParameters(
 		node.typeArguments.map((node) => {

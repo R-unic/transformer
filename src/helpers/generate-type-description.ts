@@ -182,7 +182,7 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
 	return {
 		Name: GetTypeName(type),
 		FullName: fullName,
-		Namespace: GetTypeNamespace(type),
+		Assembly: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
 		Constructor: GetConstructor(declaration),
 		BaseType: GetBaseType(type),
