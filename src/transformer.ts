@@ -4,7 +4,7 @@ import path from "path";
 import ts, { ImportDeclaration } from "typescript";
 import { ConfigObject, createConfig } from "./config";
 import { PackageInfo } from "./declarations";
-import { CreateIDGenerator } from "./helpers";
+import { CreateIDGenerator, IsContainerNode } from "./helpers";
 import { LibraryName } from "./project-config.json";
 import { Transformers } from "./transformers";
 
@@ -17,7 +17,7 @@ export class TransformContext {
 
 	private config!: ConfigObject;
 	private importSpecs = new Set<string>();
-	private addedNodes: ts.Statement[] = [];
+	private addedNodes: { Before: ts.Statement[]; After: ts.Statement[] } = { Before: [], After: [] };
 	private generator = CreateIDGenerator();
 	private sourceFile!: ts.SourceFile;
 	private cachedImport?: [ts.ImportDeclaration, number];
@@ -37,12 +37,33 @@ export class TransformContext {
 		return this.config;
 	}
 
-	public ClearAddedNodes() {
-		this.addedNodes = [];
+	public get BlockContext() {
+		return this.addedNodes as { Before: ReadonlyArray<ts.Statement>; After: ReadonlyArray<ts.Statement> };
 	}
 
-	public AddNode(node: ts.Statement | ts.Statement[]) {
-		this.addedNodes.push(...(Array.isArray(node) ? node : [node]));
+	public OverrideBlockContext() {
+		const prevNodesBefore = this.addedNodes.Before;
+		const prevNodesAfter = this.addedNodes.After;
+		this.ClearAddedNodes();
+
+		return () => {
+			this.addedNodes.Before = prevNodesBefore;
+			this.addedNodes.After = prevNodesAfter;
+		};
+	}
+
+	public ClearAddedNodes() {
+		this.addedNodes.After = [];
+		this.addedNodes.Before = [];
+	}
+
+	public AddNode(node: ts.Statement | ts.Statement[], place: "before" | "after" = "before") {
+		if (place === "before") {
+			this.addedNodes.Before.push(...(Array.isArray(node) ? node : [node]));
+			return;
+		}
+
+		this.addedNodes.After.push(...(Array.isArray(node) ? node : [node]));
 	}
 
 	public HaveImported(name: string) {
@@ -54,7 +75,7 @@ export class TransformContext {
 		const importBindings = importDecl.importClause?.namedBindings;
 		if (!importBindings || !ts.isNamedImports(importBindings)) return false;
 
-		return importBindings.elements.find((element) => element.name.getText() === name) !== undefined;
+		return importBindings.elements.find((element) => element.name.escapedText.toString() === name) !== undefined;
 	}
 
 	private getPackage(root: string, recursiveCheck: boolean = false): PackageInfo {
@@ -117,7 +138,7 @@ export class TransformContext {
 		const importBindings = node.importClause?.namedBindings;
 		if (!importBindings || !ts.isNamedImports(importBindings)) return;
 
-		const specs = importBindings.elements.map((element) => element.name.getText());
+		const specs = importBindings.elements.map((element) => element.name.escapedText.toString());
 		const finallySpecs = new Set([...new Set(specs), ...this.importSpecs]);
 
 		return this.factory.updateImportDeclaration(
@@ -130,7 +151,9 @@ export class TransformContext {
 				this.factory.updateNamedImports(
 					importBindings,
 					Array.from(finallySpecs).map((spec) => {
-						const foundSpec = importBindings.elements.find((element) => element.name.getText() === spec);
+						const foundSpec = importBindings.elements.find(
+							(element) => element.name.escapedText.toString() === spec,
+						);
 
 						return this.factory.createImportSpecifier(
 							foundSpec?.isTypeOnly ?? false,
@@ -196,25 +219,29 @@ export class TransformContext {
 		return ts.visitEachChild(
 			node,
 			(node) => {
-				if (!ts.isStatementOrBlock(node)) {
-					return visitNode(this, node);
-				}
+				if (ts.isSourceFile(node)) return visitNode(this, node);
 
-				const prevNodes = this.addedNodes;
+				const parent = node.parent;
+				if (!parent || !IsContainerNode(parent)) return visitNode(this, node);
+
+				const prevNodesBefore = this.addedNodes.Before;
+				const prevNodesAfter = this.addedNodes.After;
 				this.ClearAddedNodes();
 
 				const newNode = visitNode(this, node);
-				const newNodes = [...this.addedNodes, ...(Array.isArray(newNode) ? newNode : [newNode])];
-				this.addedNodes = prevNodes;
+				const newNodes = [...this.addedNodes.Before, newNode, ...this.addedNodes.After];
 
-				return newNodes;
+				this.addedNodes.Before = prevNodesBefore;
+				this.addedNodes.After = prevNodesAfter;
+
+				return newNodes.length === 1 ? newNodes[0] : newNodes;
 			},
 			this.context,
 		);
 	}
 }
 
-function visitNode(context: TransformContext, node: ts.Node): ts.Node | ts.Node[] {
+function visitNode(context: TransformContext, node: ts.Node): ts.Node {
 	const transformer = Transformers.get(node.kind);
 	if (transformer) {
 		return transformer(context, node);

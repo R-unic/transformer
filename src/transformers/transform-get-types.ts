@@ -1,11 +1,14 @@
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { getType } from "../helpers";
+import { f } from "../helpers/factory";
 import { TransformContext } from "../transformer";
 
 export function VisitGetTypes(state: TransformContext, node: ts.CallExpression) {
 	if (!node.parent) return;
 
-	const name = node.expression.getText();
+	if (!ts.isIdentifier(node.expression)) return;
+	const name = node.expression.escapedText.toString();
+
 	if (name !== "GetTypes") return;
 	if (!state.HaveImported("GetTypes")) return;
 
@@ -21,7 +24,5 @@ export function VisitGetTypes(state: TransformContext, node: ts.CallExpression) 
 	if (!propType || !propType.isLiteral()) return;
 	if (propType.value !== "CurrentAssembly") return;
 
-	return factory.updateCallExpression(node, node.expression, node.typeArguments, [
-		factory.createStringLiteral(state.Config.packageName),
-	]);
+	return f.update.call(node, node.expression, [f.string(state.Config.packageName)]);
 }

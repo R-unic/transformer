@@ -1,23 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ts, { NewExpression } from "typescript";
 import { ConvertValueToExpression } from ".";
-
-const factory = ts.factory;
+import { f } from "../helpers/factory";
 
 export function ConvertMapToExpression(map: Map<any, any>): NewExpression {
-	return factory.createNewExpression(
-		factory.createIdentifier("Map"),
+	return f.factory.createNewExpression(
+		f.identifier("Map"),
+		[f.keywordType(ts.SyntaxKind.AnyKeyword), f.keywordType(ts.SyntaxKind.AnyKeyword)],
 		[
-			factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
-			factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
-		],
-		[
-			factory.createArrayLiteralExpression(
+			f.array(
 				Array.from(map.entries()).map(([key, value]) => {
-					return factory.createArrayLiteralExpression(
-						[ConvertValueToExpression(key), ConvertValueToExpression(value)],
-						false,
-					);
+					return f.array([ConvertValueToExpression(key), ConvertValueToExpression(value)], false);
 				}),
 			),
 		],

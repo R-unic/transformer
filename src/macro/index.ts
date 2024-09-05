@@ -3,7 +3,7 @@ import ts from "typescript";
 import { TransformIndefine } from "./indefine";
 import { TransformRegistery } from "./registery";
 
-export const Macros = new Map<string, (node: any) => ts.Expression | ts.Statement | ts.Expression[] | ts.Statement[]>([
+export const Macros = new Map<string, (node: any) => ts.Expression | ts.Statement>([
 	["$indefine", TransformIndefine],
 	["$reflect", TransformRegistery],
 ]);
@@ -11,7 +11,9 @@ export const Macros = new Map<string, (node: any) => ts.Expression | ts.Statemen
 export function TransformMacro(node: ts.CallExpression) {
 	if (!node.parent) return;
 
-	const name = node.expression.getText();
+	if (!ts.isIdentifier(node.expression)) return;
+	const name = node.expression.escapedText.toString();
+
 	const macro = Macros.get(name);
 	if (!macro) return;
 

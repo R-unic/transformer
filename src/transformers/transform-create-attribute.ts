@@ -1,6 +1,7 @@
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { GenerateUID, getType } from "../helpers";
 import { TransformContext } from "../transformer";
+import { f } from "../helpers/factory";
 
 export function VisitCreateAttribute(state: TransformContext, node: ts.CallExpression) {
 	const typeChecker = state.typeChecker;
@@ -20,8 +21,8 @@ export function VisitCreateAttribute(state: TransformContext, node: ts.CallExpre
 	const variable = node.parent;
 	if (!ts.isVariableDeclaration(variable)) return;
 
-	return factory.updateCallExpression(node, node.expression, node.typeArguments, [
+	return f.update.call(node, node.expression, [
 		...node.arguments,
-		factory.createStringLiteral(GenerateUID(node.getSourceFile().fileName, variable.name.getText())),
+		f.string(GenerateUID(node.getSourceFile().fileName, variable.name.getText())),
 	]);
 }

@@ -5,13 +5,15 @@ import { TransformContext } from "../transformer";
 import { ConvertValueToCallExpression } from "../type-builders";
 
 function TransformGetType(node: ts.CallExpression, typeId: string | ts.ElementAccessExpression) {
-	return ConvertValueToCallExpression(node.expression.getText(), [typeId]);
+	return ConvertValueToCallExpression((node.expression as ts.Identifier).escapedText.toString(), [typeId]);
 }
 
 export function VisitGetType(state: TransformContext, node: ts.CallExpression) {
 	if (!node.parent) return;
 
-	const name = node.expression.getText();
+	if (!ts.isIdentifier(node.expression)) return;
+	const name = node.expression.escapedText.toString();
+
 	if (name !== "GetType") return;
 	if (!state.HaveImported("GetType")) return;
 	if (!node.typeArguments) return;

@@ -4,6 +4,7 @@ import { ConvertArrayToExpression } from "./array-builder";
 import { ConvertMapToExpression } from "./map-builder";
 import { ConvertObjectToExpression } from "./object-builder";
 import { IsNode, WrapInNeverExpression } from "../helpers";
+import { f } from "../helpers/factory";
 
 type Collections = "array" | "map";
 type Primities = "string" | "number" | "boolean" | "undefined" | "object" | "function" | "bigint" | "symbol";
@@ -49,9 +50,8 @@ export const ConvertValueToExpression = (value: any) => {
 };
 
 export const ConvertValueToCallExpression = (name: string, args: any[]) => {
-	return ts.factory.createCallExpression(
+	return f.call(
 		ts.factory.createIdentifier(name),
-		undefined,
 		args.map((v) => WrapInNeverExpression(ConvertValueToExpression(v))),
 	);
 };

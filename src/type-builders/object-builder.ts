@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ts, { ObjectLiteralExpression } from "typescript";
 import { ConvertValueToExpression } from ".";
-
-const factory = ts.factory;
+import { f } from "../helpers/factory";
 
 export function ConvertObjectToExpression(object: Record<string, any>): ObjectLiteralExpression {
-	return factory.createObjectLiteralExpression(
+	return f.object(
 		Object.entries(object).map(([key, value]) => {
-			return factory.createPropertyAssignment(key, ConvertValueToExpression(value));
+			return f.propertyAssignmentDeclaration(key, ConvertValueToExpression(value));
 		}),
 		false,
 	);

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { AttributeVid as AttributeKind } from "../declarations";
 import { getType } from "../helpers";
-import { CreateVarriable } from "../helpers/factories";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
+import { f } from "../helpers/factory";
 
 const AttributeKinds: Record<AttributeKind, (node: ts.Decorator) => [boolean, unknown[]]> = {
 	class: (node: ts.Decorator) => {
@@ -38,18 +38,18 @@ const varriableName = "decorator";
 export function VisitDecorator(state: TransformContext, node: ts.Decorator) {
 	const typeChecker = state.typeChecker;
 	const callExpression = node.expression;
-	if (!ts.isCallExpression(callExpression)) return;
+	if (!ts.isCallExpression(callExpression)) return node;
 
 	const identical = callExpression.expression;
-	if (!ts.isIdentifier(identical)) return;
+	if (!ts.isIdentifier(identical)) return node;
 
 	const type = typeChecker.getTypeAtLocation(identical);
 	const prop = type.getProperty("__special");
-	if (!prop) return;
+	if (!prop) return node;
 
 	const propType = getType(prop);
-	if (!propType || !propType.isLiteral()) return;
-	if (propType.value !== "AttributeMarker") return;
+	if (!propType || !propType.isLiteral()) return node;
+	if (propType.value !== "AttributeMarker") return node;
 
 	const [kind, args] = GetAttributeKind(node) ?? [];
 	if (!kind || !args) throw new Error(`Could not find kind for ${node.getText()}`);
@@ -57,8 +57,8 @@ export function VisitDecorator(state: TransformContext, node: ts.Decorator) {
 	const finalVarriableName = `${varriableName}_${state.NextID}`;
 	state.AddNode([
 		ReflectionRuntime.SetupKindForAttribute(kind, args),
-		CreateVarriable(finalVarriableName, callExpression),
+		f.variableStatement(finalVarriableName, callExpression),
 	]);
 
-	return factory.updateDecorator(node, factory.createIdentifier(finalVarriableName));
+	return f.update.decorator(node, f.identifier(finalVarriableName));
 }

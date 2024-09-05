@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ts, { ArrayLiteralExpression } from "typescript";
 import { ConvertValueToExpression } from ".";
-
-const factory = ts.factory;
+import { f } from "../helpers/factory";
 
 export function ConvertArrayToExpression(object: any[]): ArrayLiteralExpression {
-	return factory.createArrayLiteralExpression(
+	return f.array(
 		object.map((value) => {
 			return ConvertValueToExpression(value);
 		}),

@@ -1,10 +1,11 @@
-import ts, { ConstructorDeclaration, factory, MethodDeclaration, MethodSignature, NodeArray } from "typescript";
-import { getDeclaration, getSymbol, getType, GetTypeName, GetTypeNamespace, GetTypeUid } from ".";
+import ts, { ConstructorDeclaration, MethodDeclaration, MethodSignature, NodeArray } from "typescript";
+import { getDeclaration, GetDeclarationName, getSymbol, getType, GetTypeName, GetTypeNamespace, GetTypeUid } from ".";
 import { ConstructorInfo, Method, Parameter, Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
 import { GetTypeKind } from "./get-type-kind";
+import { f } from "./factory";
 
 function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
@@ -110,7 +111,15 @@ function GetBaseType(type: ts.Type) {
 function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {
 	const typeChecker = TransformContext.Instance.typeChecker;
 
-	if (!parameter.type) throw new Error(`Could not find type for ${parameter.name.getText()}`);
+	if (!parameter.type) {
+		console.warn(`Could not find type for ${parameter.name.getText()}`);
+
+		return {
+			Name: parameter.name.getText(),
+			Optional: parameter.questionToken !== undefined,
+			Type: ReflectionRuntime.__GetType("Unknown"),
+		};
+	}
 	const type = typeChecker.getTypeFromTypeNode(parameter.type);
 
 	return {
@@ -124,10 +133,8 @@ function GenerateMethodDescription(method: ts.MethodDeclaration | ts.MethodSigna
 	const typeChecker = TransformContext.Instance.typeChecker;
 	const signature = typeChecker.getSignatureFromDeclaration(method);
 	const methodName = method.name.getText();
-	if (!signature) throw new Error(`Could not find signature for ${method.name.getText()}`);
-
-	const ctorSymbol = getSymbol(typeChecker.getTypeAtLocation(ctor));
 	const isInterface = ts.isInterfaceDeclaration(ctor);
+	if (!signature) throw new Error(`Could not find signature for ${method.name.getText()}`);
 
 	return {
 		Name: methodName,
@@ -139,7 +146,7 @@ function GenerateMethodDescription(method: ts.MethodDeclaration | ts.MethodSigna
 		Callback: isInterface
 			? undefined
 			: ReflectionRuntime.GetMethodCallback(
-					factory.createIdentifier(ctorSymbol.escapedName.toString()),
+					f.identifier(GetDeclarationName(typeChecker.getTypeAtLocation(ctor))),
 					methodName,
 			  ),
 	};
@@ -164,15 +171,15 @@ function GetConstructor(node?: ts.Node): ConstructorInfo | undefined {
 	return {
 		Parameters: constructor.parameters.map((parameter) => GenerateParameterDescription(parameter)),
 		AccessModifier: GetAccessModifier(constructor.modifiers),
-		Callback: ReflectionRuntime.GetConstructorCallback(factory.createIdentifier(node.name!.getText())),
+		Callback: ReflectionRuntime.GetConstructorCallback(f.identifier(node.name!.escapedText.toString())),
 	};
 }
 
 function GetReferenseValue(type: ts.Type) {
 	const declaration = type.symbol?.valueDeclaration;
-	if (!declaration) return;
+	if (!declaration || !ts.isNamedDeclaration(declaration)) return;
 
-	return factory.createIdentifier(type.symbol.escapedName.toString());
+	return f.identifier(declaration.name.getText());
 }
 
 export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {

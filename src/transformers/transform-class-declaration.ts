@@ -1,8 +1,9 @@
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { PasteNodeInStaticBlock } from "../helpers/factories";
 import { GenerateTypeDescriptionFromNode } from "../helpers/generate-type-description";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
+import { f } from "../helpers/factory";
 
 export function VisitClassDeclaration(context: TransformContext, node: ts.ClassDeclaration) {
 	node = context.Transform(node);
@@ -11,6 +12,6 @@ export function VisitClassDeclaration(context: TransformContext, node: ts.ClassD
 
 	return PasteNodeInStaticBlock(node, [
 		ReflectionRuntime.RegisterType(typeDescription),
-		ReflectionRuntime.RegisterDataType(factory.createIdentifier(typeDescription.Name), typeDescription.FullName),
+		ReflectionRuntime.RegisterDataType(f.identifier(typeDescription.Name), typeDescription.FullName),
 	]);
 }

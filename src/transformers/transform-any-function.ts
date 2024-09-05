@@ -1,4 +1,4 @@
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import {
 	ClearDefinedGenerics,
 	DefineGenerics,
@@ -8,53 +8,64 @@ import {
 } from "../helpers/generic-helper";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
+import { IsReflectSignature } from "../helpers";
+import { f } from "../helpers/factory";
 
-export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(context: TransformContext, node: T) {
+export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(state: TransformContext, node: T) {
 	const typeParameters = node.typeParameters;
-	if (!typeParameters) return undefined;
+	const isReflectSignature = IsReflectSignature(node);
 
-	const unpackStatement = GenerateUnpackGenerics(context.factory);
-
-	DefineGenerics(
-		typeParameters.map((typeParameter) => {
-			return context.typeChecker.getTypeAtLocation(typeParameter);
-		}),
-	);
-
-	const additionalNodes: ts.Statement[] = [unpackStatement];
+	const additionalNodes: ts.Statement[] = [];
 	const defaultParameters: [number, ts.Expression][] = [];
 
-	typeParameters.forEach((typeParameter, index) => {
-		if (!typeParameter.default) return;
+	if (typeParameters && isReflectSignature) {
+		additionalNodes.push(GenerateUnpackGenerics(state.factory));
+		DefineGenerics(
+			typeParameters.map((typeParameter) => {
+				return state.typeChecker.getTypeAtLocation(typeParameter);
+			}),
+		);
 
-		const type = context.typeChecker.getTypeFromTypeNode(typeParameter.default);
-		defaultParameters.push([index, GenerateTypeUIDUsingGenerics(type)]);
-	});
+		typeParameters.forEach((typeParameter, index) => {
+			if (!typeParameter.default) return;
+
+			const type = state.typeChecker.getTypeFromTypeNode(typeParameter.default);
+			defaultParameters.push([index, GenerateTypeUIDUsingGenerics(type)]);
+		});
+	}
 
 	if (defaultParameters.length > 0) {
 		additionalNodes.push(
 			ReflectionRuntime.SetupDefaultGenericParameters(
-				factory.createIdentifier(GENERICS_ARRAY),
+				f.identifier(GENERICS_ARRAY),
 				defaultParameters,
 			),
 		);
 	}
 
-	const updatedNode = context.Transform(node);
-	let block = updatedNode.body;
+	const restoreContext = state.OverrideBlockContext();
+	const updatedNode = state.Transform(node);
+	const nodesFromContext = state.BlockContext;
+
+	let body = updatedNode.body;
 	ClearDefinedGenerics();
 
-	if (block && ts.isBlock(block)) {
-		block = context.factory.updateBlock(block, [...additionalNodes, ...block.statements]);
+	if (updatedNode === node && !isReflectSignature) return undefined;
+
+	if (body && ts.isBlock(body)) {
+		body = state.factory.updateBlock(body, [
+			...additionalNodes,
+			...body.statements,
+		]);
 	}
 
-	if (block && !ts.isBlock(block)) {
-		block = context.factory.createBlock([...additionalNodes, factory.createReturnStatement(block)], true);
+	if (body && !ts.isBlock(body)) {
+		body = state.factory.createBlock(
+			[...additionalNodes, ...nodesFromContext.Before, f.returnStatement(body)],
+			true,
+		);
 	}
 
-	if (!block) {
-		block = context.factory.createBlock([...additionalNodes], true);
-	}
-
-	return [updatedNode, block] as const;
+	restoreContext();
+	return [updatedNode, body] as const;
 }

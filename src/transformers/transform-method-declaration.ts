@@ -4,7 +4,7 @@ import { TransformAnyFunction } from "./transform-any-function";
 
 export function VisitMethodDeclaration(context: TransformContext, node: ts.MethodDeclaration) {
 	const result = TransformAnyFunction(context, node);
-	if (!result) return context.Transform(node);
+	if (!result) return node;
 
 	const [updatedNode, block] = result;
 
@@ -17,6 +17,6 @@ export function VisitMethodDeclaration(context: TransformContext, node: ts.Metho
 		updatedNode.typeParameters,
 		updatedNode.parameters,
 		updatedNode.type,
-		block,
+		block ?? updatedNode.body,
 	);
 }

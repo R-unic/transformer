@@ -10,7 +10,7 @@ import { VisitFunctionExpression } from "./transform-function-expression";
 import { VisitInterfaceDeclaration } from "./transform-interface-declaration";
 import { VisitMethodDeclaration } from "./transform-method-declaration";
 
-export const Transformers = new Map<ts.SyntaxKind, (state: TransformContext, node: any) => any>([
+export const Transformers = new Map<ts.SyntaxKind, (state: TransformContext, node: any) => ts.Node>([
 	[ts.SyntaxKind.ClassDeclaration, VisitClassDeclaration],
 	[ts.SyntaxKind.InterfaceDeclaration, VisitInterfaceDeclaration],
 	[ts.SyntaxKind.CallExpression, VisitCallExpression],

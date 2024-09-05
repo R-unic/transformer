@@ -1,9 +1,10 @@
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { getSymbol, GetTypeUid } from ".";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { ConvertValueToExpression } from "../type-builders";
 import { TransformContext } from "../transformer";
 import { GenerateGenericsFromAttributeApi } from "../transformers/transform-attribute-api";
+import { ConvertValueToExpression } from "../type-builders";
+import { f } from "./factory";
 
 export const GENERICS_ARRAY = "__GENERICS_ARRAY";
 let DefinedGenerics: ts.Type[] | undefined = undefined;
@@ -84,8 +85,5 @@ export function GenerateTypeUIDUsingGenerics(type: ts.Type) {
 }
 
 export function GenerateIndexOfGenerics(index: number) {
-	return factory.createElementAccessExpression(
-		factory.createIdentifier(GENERICS_ARRAY),
-		factory.createNumericLiteral(`${index}`),
-	);
+	return f.elementAccessExpression(f.identifier(GENERICS_ARRAY), f.number(`${index}`));
 }

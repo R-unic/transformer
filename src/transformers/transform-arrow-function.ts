@@ -4,8 +4,7 @@ import { TransformAnyFunction } from "./transform-any-function";
 
 export function VisitArrowFunction(context: TransformContext, node: ts.ArrowFunction) {
 	const result = TransformAnyFunction(context, node);
-	if (!result) return context.Transform(node);
-
+	if (!result) return node;
 	const [updatedNode, block] = result;
 
 	return context.factory.updateArrowFunction(
@@ -15,6 +14,6 @@ export function VisitArrowFunction(context: TransformContext, node: ts.ArrowFunc
 		updatedNode.parameters,
 		updatedNode.type,
 		updatedNode.equalsGreaterThanToken,
-		block,
+		block ?? updatedNode.body,
 	);
 }

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
 import path from "path";
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { TransformContext } from "../transformer";
+import { f } from "./factory";
 
 const nodeModulesPattern = "/node_modules/";
 const PATH_SEPARATOR_REGEX = /\\/g;
@@ -203,9 +204,26 @@ export function CreateIDGenerator() {
 	};
 }
 
+export function GetDeclarationName(type: ts.Type) {
+	const declaration = type.symbol?.valueDeclaration;
+	if (!declaration || !ts.isNamedDeclaration(declaration)) return "UnknownDeclaration";
+
+	return declaration.name.getText();
+}
+
+export function HaveTag(declaration: ts.Declaration, tag: string) {
+	const tags = ts.getJSDocTags(declaration);
+	return tags.find((foundTag) => foundTag.tagName.text === tag) !== undefined;
+}
+
+export function IsReflectSignature(signature: ts.Signature | ts.Declaration) {
+	const declaration = IsNode(signature) ? (signature as ts.Declaration) : (signature as ts.Signature).declaration;
+	return declaration && HaveTag(declaration, "reflect");
+}
+
 export function GetTypeName(type: ts.Type) {
 	if (type.symbol) {
-		return type.symbol.name;
+		return GetDeclarationName(type);
 	} else if (IsDefinedType(type)) {
 		return `defined`;
 	} else if (type.flags & ts.TypeFlags.Intrinsic) {
@@ -244,7 +262,11 @@ export function IsPrimive(type: ts.Type) {
 }
 
 export function WrapInNeverExpression(expression: ts.Expression) {
-	return factory.createAsExpression(expression, factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword));
+	return f.asNever(expression);
+}
+
+export function IsContainerNode(node: ts.Node) {
+	return "statements" in node;
 }
 
 export function GetTypeUid(type: ts.Type) {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import ts, { factory } from "typescript";
+import ts from "typescript";
 import { TransformContext } from "../transformer";
-import { CreateVarriable } from "./factories";
+import { f } from "./factory";
 import { GenerateSetupGenericParameters } from "./generic-helper";
 
 export function IsCallExpressionWithGeneric(node: ts.CallExpression) {
@@ -31,16 +31,16 @@ export function CollectCallExpressionChain(
 }
 
 function ConvertInAccessPath(path: ts.Expression[]) {
-	if (path.length === 1) return factory.createIdentifier(path[0].getText());
+	if (path.length === 1) return f.identifier(path[0].getText());
 
 	if (!ts.isIdentifier(path[1])) throw "Cannot resolve access chain";
-	let access = factory.createPropertyAccessExpression(path[0], path[1]);
+	let access = f.propertyAccessExpression(path[0], path[1]);
 	path.shift();
 	path.shift();
 
 	for (let i = 0; i < path.length; i++) {
 		if (!ts.isIdentifier(path[i])) throw "Cannot resolve access chain";
-		access = factory.createPropertyAccessExpression(access, path[i] as ts.Identifier);
+		access = f.propertyAccessExpression(access, path[i] as ts.Identifier);
 	}
 
 	return access;
@@ -66,23 +66,19 @@ export function ResolveChain(chain: (ts.CallExpression | ts.PropertyAccessExpres
 			break;
 		}
 
-		residualPath.unshift(factory.createIdentifier(node.name.getText()));
+		residualPath.unshift(f.identifier(node.name.escapedText.toString()));
 	}
 
 	chain.forEach((node, index) => {
 		if (ts.isPropertyAccessExpression(node)) {
-			path.push(factory.createIdentifier(node.name.getText()));
+			path.push(f.identifier(node.name.escapedText.toString()));
 			return;
 		}
 
 		const newName = `CallResult_${TransformContext.Instance.NextID}`;
 		const localNodes: ts.Statement[] = [];
 		let expression: ts.Expression = lastName
-			? factory.createCallExpression(
-					ConvertInAccessPath([factory.createIdentifier(lastName), ...path]),
-					node.typeArguments,
-					node.arguments,
-			  )
+			? f.call(ConvertInAccessPath([f.identifier(lastName), ...path]))
 			: node;
 
 		const isLastCallExpress = index === lastCallExpressionIndex;
@@ -91,12 +87,8 @@ export function ResolveChain(chain: (ts.CallExpression | ts.PropertyAccessExpres
 		}
 
 		index < chain.length - 1 && !isLastCallExpress
-			? localNodes.push(CreateVarriable(newName, expression))
-			: localNodes.push(
-					varriableName
-						? CreateVarriable(varriableName, expression)
-						: factory.createExpressionStatement(expression),
-			  );
+			? localNodes.push(f.variableStatement(newName, expression))
+			: localNodes.push(varriableName ? f.variableStatement(varriableName, expression) : f.statement(expression));
 
 		lastName = newName;
 		path = [];
