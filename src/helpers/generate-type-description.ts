@@ -110,17 +110,7 @@ function GetBaseType(type: ts.Type) {
 
 function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {
 	const typeChecker = TransformContext.Instance.typeChecker;
-
-	if (!parameter.type) {
-		console.warn(`Could not find type for ${parameter.name.getText()}`);
-
-		return {
-			Name: parameter.name.getText(),
-			Optional: parameter.questionToken !== undefined,
-			Type: ReflectionRuntime.__GetType("Unknown"),
-		};
-	}
-	const type = typeChecker.getTypeFromTypeNode(parameter.type);
+	const type = typeChecker.getTypeAtLocation(parameter);
 
 	return {
 		Name: parameter.name.getText(),
