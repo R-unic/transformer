@@ -48,3 +48,8 @@ export interface Property {
 	//readonly accessor: Accessor;
 	readonly Readonly: boolean;
 }
+
+export interface TSConfig {
+	reflectAllCalls?: boolean;
+	autoRegister?: boolean;
+}

@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import ts, { ImportDeclaration } from "typescript";
 import { ConfigObject, createConfig } from "./config";
-import { PackageInfo } from "./declarations";
+import { PackageInfo, TSConfig } from "./declarations";
 import { CreateIDGenerator, IsContainerNode } from "./helpers";
 import { LibraryName } from "./project-config.json";
 import { Transformers } from "./transformers";
@@ -22,11 +22,18 @@ export class TransformContext {
 	private sourceFile!: ts.SourceFile;
 	private cachedImport?: [ts.ImportDeclaration, number];
 
-	constructor(public program: ts.Program, public context: ts.TransformationContext) {
+	constructor(public program: ts.Program, public context: ts.TransformationContext, public tsConfig: TSConfig) {
 		TransformContext.Instance = this;
+		this.setupDefaultTSconfigParams();
+		
 		this.typeChecker = program.getTypeChecker();
 		this.factory = context.factory;
 		this.prepareConfig(program);
+	}
+
+	private setupDefaultTSconfigParams() {
+		this.tsConfig.autoRegister ??= true;
+		this.tsConfig.reflectAllCalls ??= false;
 	}
 
 	public get NextID() {

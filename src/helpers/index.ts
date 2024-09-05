@@ -216,9 +216,13 @@ export function HaveTag(declaration: ts.Declaration, tag: string) {
 	return tags.find((foundTag) => foundTag.tagName.text === tag) !== undefined;
 }
 
+export function HaveReflectTag(declaration: ts.Declaration) {
+	return HaveTag(declaration, "reflect");
+}
+
 export function IsReflectSignature(signature: ts.Signature | ts.Declaration) {
 	const declaration = IsNode(signature) ? (signature as ts.Declaration) : (signature as ts.Signature).declaration;
-	return declaration && HaveTag(declaration, "reflect");
+	return declaration && (TransformContext.Instance.tsConfig.reflectAllCalls ? true : HaveReflectTag(declaration));
 }
 
 export function GetTypeName(type: ts.Type) {

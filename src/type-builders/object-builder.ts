@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import ts, { ObjectLiteralExpression } from "typescript";
+import { ObjectLiteralExpression } from "typescript";
 import { ConvertValueToExpression } from ".";
 import { f } from "../helpers/factory";
 
