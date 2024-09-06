@@ -1,4 +1,6 @@
 import ts from "typescript";
+import { IsReflectSignature } from "../helpers";
+import { f } from "../helpers/factory";
 import {
 	ClearDefinedGenerics,
 	DefineGenerics,
@@ -8,8 +10,6 @@ import {
 } from "../helpers/generic-helper";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
-import { IsReflectSignature } from "../helpers";
-import { f } from "../helpers/factory";
 
 export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(state: TransformContext, node: T) {
 	const typeParameters = node.typeParameters;
@@ -36,10 +36,7 @@ export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(s
 
 	if (defaultParameters.length > 0) {
 		additionalNodes.push(
-			ReflectionRuntime.SetupDefaultGenericParameters(
-				f.identifier(GENERICS_ARRAY),
-				defaultParameters,
-			),
+			ReflectionRuntime.SetupDefaultGenericParameters(f.identifier(GENERICS_ARRAY), defaultParameters),
 		);
 	}
 
@@ -53,10 +50,7 @@ export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(s
 	if (updatedNode === node && !isReflectSignature) return undefined;
 
 	if (body && ts.isBlock(body)) {
-		body = state.factory.updateBlock(body, [
-			...additionalNodes,
-			...body.statements,
-		]);
+		body = state.factory.updateBlock(body, [...additionalNodes, ...body.statements]);
 	}
 
 	if (body && !ts.isBlock(body)) {

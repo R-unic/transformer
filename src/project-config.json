@@ -1,3 +1,9 @@
 {
-	"LibraryName": "@rbxts/reflection-runtime"
+	"LibraryName": "@rbxts/reflection-runtime",
+	"Tags": {
+		"globalReflect": "globalReflect",
+		"nonReflect": "nonReflect",
+		"reflect": "reflect",
+		"nonRegister": "nonRegister"
+	}
 }

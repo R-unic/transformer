@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
+import { Tags } from "../project-config.json";
 import { TransformContext } from "../transformer";
 import { f } from "./factory";
 
@@ -211,18 +212,31 @@ export function GetDeclarationName(type: ts.Type) {
 	return declaration.name.getText();
 }
 
-export function HaveTag(declaration: ts.Declaration, tag: string) {
+export function HaveTag(declaration: ts.Node, tag: string) {
 	const tags = ts.getJSDocTags(declaration);
 	return tags.find((foundTag) => foundTag.tagName.text === tag) !== undefined;
 }
 
-export function HaveReflectTag(declaration: ts.Declaration) {
-	return HaveTag(declaration, "reflect");
+export function HaveReflectTag(declaration: ts.Node) {
+	return HaveTag(declaration, Tags.reflect);
 }
 
 export function IsReflectSignature(signature: ts.Signature | ts.Declaration) {
 	const declaration = IsNode(signature) ? (signature as ts.Declaration) : (signature as ts.Signature).declaration;
-	return declaration && (TransformContext.Instance.tsConfig.reflectAllCalls ? true : HaveReflectTag(declaration));
+	return (
+		declaration &&
+		(TransformContext.Instance.tsConfig.reflectAllCalls
+			? !TransformContext.Instance.IsDisabledReflect
+			: (HaveReflectTag(declaration) || TransformContext.Instance.IsEnableGlobalReflect) &&
+			  !TransformContext.Instance.IsDisabledReflect)
+	);
+}
+
+export function IsCanRegisterType(node: ts.Node) {
+	console.log(TransformContext.Instance.IsDisabledRegister);
+	return TransformContext.Instance.tsConfig.autoRegister
+		? !TransformContext.Instance.IsDisabledRegister
+		: HaveReflectTag(node) && !TransformContext.Instance.IsDisabledRegister;
 }
 
 export function GetTypeName(type: ts.Type) {

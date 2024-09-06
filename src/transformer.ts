@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
 import path from "path";
-import ts, { ImportDeclaration } from "typescript";
+import ts, { ImportDeclaration, NodeArray } from "typescript";
 import { ConfigObject, createConfig } from "./config";
 import { PackageInfo, TSConfig } from "./declarations";
-import { CreateIDGenerator, IsContainerNode } from "./helpers";
-import { LibraryName } from "./project-config.json";
+import { CreateIDGenerator, HaveTag } from "./helpers";
+import { f } from "./helpers/factory";
+import { LibraryName, Tags } from "./project-config.json";
 import { Transformers } from "./transformers";
 
 const UnknownPackageName = "@@this";
@@ -21,11 +22,14 @@ export class TransformContext {
 	private generator = CreateIDGenerator();
 	private sourceFile!: ts.SourceFile;
 	private cachedImport?: [ts.ImportDeclaration, number];
+	private isEnableGlobalReflect = false;
+	private isDisabledReflect = false;
+	private isDisabledRegister = false;
 
 	constructor(public program: ts.Program, public context: ts.TransformationContext, public tsConfig: TSConfig) {
 		TransformContext.Instance = this;
 		this.setupDefaultTSconfigParams();
-		
+
 		this.typeChecker = program.getTypeChecker();
 		this.factory = context.factory;
 		this.prepareConfig(program);
@@ -34,6 +38,18 @@ export class TransformContext {
 	private setupDefaultTSconfigParams() {
 		this.tsConfig.autoRegister ??= true;
 		this.tsConfig.reflectAllCalls ??= false;
+	}
+
+	public get IsDisabledRegister() {
+		return this.isDisabledRegister;
+	}
+
+	public get IsEnableGlobalReflect() {
+		return this.isEnableGlobalReflect;
+	}
+
+	public get IsDisabledReflect() {
+		return this.isDisabledReflect;
 	}
 
 	public get NextID() {
@@ -175,14 +191,15 @@ export class TransformContext {
 		);
 	}
 
-	private findImport(statements: ts.NodeArray<ts.Statement>) {
+	private findImport(statements: ts.NodeArray<ts.Statement> | ts.Statement[]) {
 		if (this.cachedImport) return this.cachedImport;
 		const libraryName = `"${LibraryName}"`;
 
 		const index = statements.findIndex((element) => {
 			if (!ts.isImportDeclaration(element)) return false;
+			if (!ts.isStringLiteral(element.moduleSpecifier)) return this.factory;
 
-			return element.moduleSpecifier.getText() === libraryName;
+			return element.moduleSpecifier.text === libraryName;
 		});
 
 		if (index !== -1) {
@@ -194,54 +211,89 @@ export class TransformContext {
 			: ([undefined, undefined] as const);
 	}
 
-	public UpdateFile(sourceFile: ts.SourceFile) {
+	private transformStatementList(
+		statements: NodeArray<ts.Statement>,
+		parent: ts.Node,
+		callback?: (node: ts.Node) => void,
+	) {
+		const result: ts.Statement[] = [];
+
+		statements.forEach((statement) => {
+			const clearContext = this.OverrideBlockContext();
+			const newNode = visitNode(this, statement) as ts.Statement;
+			callback?.(newNode);
+
+			const newNodes = [...this.addedNodes.Before, newNode, ...this.addedNodes.After];
+
+			newNodes.forEach((node) => {
+				(node.parent as ts.Node) = parent;
+				result.push(node);
+			});
+
+			clearContext();
+		});
+
+		return result;
+	}
+
+	public TransformFile(sourceFile: ts.SourceFile) {
 		this.importSpecs.clear();
 		this.cachedImport = undefined;
 		this.sourceFile = sourceFile;
+		this.isEnableGlobalReflect = false;
+		this.isDisabledReflect = false;
+		this.isDisabledRegister = false;
 		this.generator = CreateIDGenerator();
 
-		sourceFile = this.Transform(sourceFile);
-		if (this.importSpecs.size === 0) return sourceFile;
-
-		const [found, index] = this.findImport(sourceFile.statements);
-		const importDeclaration = found ? this.updateImport(found) : this.generateImport();
-		const copy = [...sourceFile.statements];
-
-		if (importDeclaration && index !== undefined) {
-			copy[index!] = importDeclaration;
+		const firstStatement = sourceFile.statements[0];
+		if (firstStatement && firstStatement.parent === undefined) {
+			(firstStatement.parent as ts.SourceFile) = sourceFile;
 		}
 
-		return this.factory.updateSourceFile(
-			sourceFile,
-			importDeclaration && index !== undefined ? copy : [importDeclaration!, ...sourceFile.statements],
-			sourceFile.isDeclarationFile,
-			sourceFile.referencedFiles,
-			sourceFile.typeReferenceDirectives,
-			sourceFile.hasNoDefaultLib,
-			sourceFile.libReferenceDirectives,
-		);
+		const statements = this.transformStatementList(sourceFile.statements, sourceFile, (node) => {
+			if (HaveTag(node, Tags.globalReflect)) {
+				this.isEnableGlobalReflect = true;
+			}
+
+			if (HaveTag(node, Tags.nonReflect)) {
+				this.isDisabledReflect = true;
+			}
+
+			if (HaveTag(node, Tags.nonRegister)) {
+				this.isDisabledRegister = true;
+			}
+		});
+
+		// Update imports
+		if (this.importSpecs.size !== 0) {
+			const [found, index] = this.findImport(statements);
+			const importDeclaration = found ? this.updateImport(found) : this.generateImport();
+
+			if (importDeclaration && index !== undefined) {
+				statements[index!] = importDeclaration;
+			}
+
+			if (importDeclaration && index === undefined) {
+				(importDeclaration.parent as ts.SourceFile) = sourceFile;
+				if (ts.isImportDeclaration(statements[0])) {
+					statements.splice(1, 0, importDeclaration);
+				} else {
+					statements.unshift(importDeclaration);
+				}
+			}
+		}
+
+		return f.update.sourceFile(sourceFile, this.factory.createNodeArray(statements));
 	}
 
 	public Transform<T extends ts.Node>(node: T): T {
 		return ts.visitEachChild(
 			node,
-			(node) => {
-				if (ts.isSourceFile(node)) return visitNode(this, node);
+			(child) => {
+				if (!ts.isBlock(child)) return visitNode(this, child);
 
-				const parent = node.parent;
-				if (!parent || !IsContainerNode(parent)) return visitNode(this, node);
-
-				const prevNodesBefore = this.addedNodes.Before;
-				const prevNodesAfter = this.addedNodes.After;
-				this.ClearAddedNodes();
-
-				const newNode = visitNode(this, node);
-				const newNodes = [...this.addedNodes.Before, newNode, ...this.addedNodes.After];
-
-				this.addedNodes.Before = prevNodesBefore;
-				this.addedNodes.After = prevNodesAfter;
-
-				return newNodes.length === 1 ? newNodes[0] : newNodes;
+				const newStatements = this.transformStatementList(child.statements, child);
+				return this.factory.updateBlock(child, newStatements);
 			},
 			this.context,
 		);
@@ -249,6 +301,9 @@ export class TransformContext {
 }
 
 function visitNode(context: TransformContext, node: ts.Node): ts.Node {
+	if (ts.isClassDeclaration(node)) {
+		console.log(node);
+	}
 	const transformer = Transformers.get(node.kind);
 	if (transformer) {
 		return transformer(context, node);
