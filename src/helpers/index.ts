@@ -233,7 +233,6 @@ export function IsReflectSignature(signature: ts.Signature | ts.Declaration) {
 }
 
 export function IsCanRegisterType(node: ts.Node) {
-	console.log(TransformContext.Instance.IsDisabledRegister);
 	return TransformContext.Instance.tsConfig.autoRegister
 		? !TransformContext.Instance.IsDisabledRegister
 		: HaveReflectTag(node) && !TransformContext.Instance.IsDisabledRegister;

@@ -274,13 +274,12 @@ export class TransformContext {
 			}
 
 			if (importDeclaration && index === undefined) {
-				(importDeclaration.parent as ts.SourceFile) = sourceFile;
-				if (ts.isImportDeclaration(statements[0])) {
-					statements.splice(1, 0, importDeclaration);
-				} else {
-					statements.unshift(importDeclaration);
-				}
+				statements.unshift(importDeclaration);
 			}
+		}
+
+		if (statements[0] && firstStatement) {
+			ts.moveSyntheticComments(statements[0], firstStatement);
 		}
 
 		return f.update.sourceFile(sourceFile, this.factory.createNodeArray(statements));
@@ -301,9 +300,6 @@ export class TransformContext {
 }
 
 function visitNode(context: TransformContext, node: ts.Node): ts.Node {
-	if (ts.isClassDeclaration(node)) {
-		console.log(node);
-	}
 	const transformer = Transformers.get(node.kind);
 	if (transformer) {
 		return transformer(context, node);
