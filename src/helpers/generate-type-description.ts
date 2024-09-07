@@ -21,7 +21,7 @@ function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
-	if (declaration || IsPrimive(type)) {
+	if ((declaration || IsPrimive(type)) && !type.isTypeParameter()) {
 		const fullName = GetTypeUid(type);
 		return ReflectionRuntime.__GetType(fullName);
 	}
@@ -94,6 +94,14 @@ function ExcludeUndefined(type: ts.Type) {
 	return type;
 }
 
+function HaveUndefined(type: ts.Type) {
+	if (type.isUnion()) {
+		return type.types.find((typeFromUnion) => typeFromUnion.flags !== ts.TypeFlags.Undefined) !== undefined;
+	}
+
+	return false;
+}
+
 function GetTypeDescription(type: ts.Type): Type;
 function GetTypeDescription(node: ts.Node): Type;
 function GetTypeDescription(node: ts.Node | ts.Type) {
@@ -104,13 +112,14 @@ function GetTypeDescription(node: ts.Node | ts.Type) {
 
 function GenerateProperty(memberSymbol: ts.Symbol): Property | undefined {
 	const declaration = getDeclaration(memberSymbol);
+	const type = getType(memberSymbol);
 	const optional =
 		(memberSymbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional ||
 		(declaration &&
 			(ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)) &&
-			!!declaration.questionToken);
+			!!declaration.questionToken) ||
+		(type && HaveUndefined(type));
 
-	const type = getType(memberSymbol);
 	if (!type || !declaration || (!ts.isPropertySignature(declaration) && !ts.isPropertyDeclaration(declaration)))
 		return;
 
@@ -138,8 +147,9 @@ function GetProperties(type: ts.Type): Property[] {
 }
 
 function GetBaseType(type: ts.Type) {
-	const baseType = (type.getBaseTypes() ?? [])[0];
-	return baseType ? ReflectionRuntime.__GetType(GetTypeUid(baseType)) : undefined;
+	const baseType = (type.getBaseTypes() ?? [])[0] ?? type.getDefault();
+
+	return baseType ? GetReferenceType(baseType) : undefined;
 }
 
 function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {
@@ -206,6 +216,13 @@ function GetReferenseValue(type: ts.Type) {
 	return f.identifier(declaration.name.getText());
 }
 
+function GetConstraint(type: ts.Type): Type | undefined {
+	const constraint = type.getConstraint();
+	if (!type || constraint === undefined || constraint === type) return;
+
+	return GetReferenceType(constraint);
+}
+
 export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
 	const declaration = getDeclaration(getSymbol(type));
 
@@ -220,5 +237,6 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
 		Properties: GetProperties(type),
 		Methods: GetMethods(declaration),
 		Kind: GetTypeKind(type),
+		Constraint: GetConstraint(type),
 	};
 }

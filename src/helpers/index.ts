@@ -289,6 +289,9 @@ export function IsContainerNode(node: ts.Node) {
 }
 
 export function GetTypeUid(type: ts.Type) {
+	if (type.isTypeParameter()) {
+		return `TypeParameter:${GetTypeName(type)}`;
+	}
 	if (getSymbol(type)) {
 		return GetSymbolUID(getSymbol(type));
 	} else if (IsDefinedType(type)) {

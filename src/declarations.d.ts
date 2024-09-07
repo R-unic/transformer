@@ -16,6 +16,7 @@ export interface Type {
 	readonly Interfaces: Type[];
 	readonly Properties: Property[];
 	readonly Methods: Method[];
+	readonly Constraint: Type | undefined;
 }
 
 export interface Parameter {
