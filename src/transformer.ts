@@ -193,13 +193,12 @@ export class TransformContext {
 
 	private findImport(statements: ts.NodeArray<ts.Statement> | ts.Statement[]) {
 		if (this.cachedImport) return this.cachedImport;
-		const libraryName = `"${LibraryName}"`;
 
 		const index = statements.findIndex((element) => {
 			if (!ts.isImportDeclaration(element)) return false;
 			if (!ts.isStringLiteral(element.moduleSpecifier)) return this.factory;
 
-			return element.moduleSpecifier.text === libraryName;
+			return element.moduleSpecifier.text === LibraryName;
 		});
 
 		if (index !== -1) {
@@ -265,6 +264,8 @@ export class TransformContext {
 		});
 
 		// Update imports
+		let isNewImport = false;
+
 		if (this.importSpecs.size !== 0) {
 			const [found, index] = this.findImport(statements);
 			const importDeclaration = found ? this.updateImport(found) : this.generateImport();
@@ -274,12 +275,20 @@ export class TransformContext {
 			}
 
 			if (importDeclaration && index === undefined) {
+				isNewImport = true;
 				statements.unshift(importDeclaration);
 			}
 		}
 
-		if (statements[0] && firstStatement) {
+		if (firstStatement && statements[0] && isNewImport) {
+			const original = ts.getParseTreeNode(firstStatement);
+
 			ts.moveSyntheticComments(statements[0], firstStatement);
+
+			if (original) {
+				ts.copyComments(original, statements[0]);
+				ts.removeAllComments(original);
+			}
 		}
 
 		return f.update.sourceFile(sourceFile, this.factory.createNodeArray(statements));

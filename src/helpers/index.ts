@@ -206,7 +206,7 @@ export function CreateIDGenerator() {
 }
 
 export function GetDeclarationName(type: ts.Type) {
-	const declaration = type.symbol?.valueDeclaration;
+	const declaration = getDeclaration(type.symbol);
 	if (!declaration || !ts.isNamedDeclaration(declaration)) return "UnknownDeclaration";
 
 	return declaration.name.getText();

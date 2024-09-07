@@ -1,10 +1,10 @@
 {
 	"name": "rbxts-transformer-reflection",
-	"version": "0.0.1",
-	"description": "Reflection transformer for Roblox TS",
+	"version": "1.0.0",
+	"description": "Library that allows you to work with types in runtime!",
 	"main": "out/index.js",
-	"author": "Tesmi",
-	"license": "MIT",
+	"author": "Tesmi (https://github.com/Tesmi-Develop)",
+  	"license": "MIT",
 	"peerDependencies": {
 		"typescript": "^5.2.2"
 	},
@@ -13,6 +13,19 @@
 		"build": "tsc",
 		"watch": "tsc -w"
 	},
+	"keywords": [
+		"@rbxts",
+		"transformer",
+		"reflection",
+		"reflect",
+		"type",
+		"types",
+		"reflection-runtime"
+	],
+  	"repository": {
+    	"type": "git",
+    	"url": "https://github.com/roblox-ts-reflection/runtime"
+  	},
 	"devDependencies": {
 		"@types/node": "^16.11.1",
 		"@types/ts-expose-internals": "npm:ts-expose-internals@5.2.2",
