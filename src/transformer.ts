@@ -7,6 +7,7 @@ import { PackageInfo, TSConfig } from "./declarations";
 import { CreateIDGenerator, HaveTag } from "./helpers";
 import { f } from "./helpers/factory";
 import { LibraryName, Tags } from "./project-config.json";
+import * as projectConfig from "./project-config.json";
 import { Transformers } from "./transformers";
 
 const UnknownPackageName = "@@this";
@@ -15,6 +16,7 @@ export class TransformContext {
 	public static Instance: TransformContext;
 	public readonly factory: ts.NodeFactory;
 	public readonly typeChecker: ts.TypeChecker;
+	public readonly projectConfig = projectConfig;
 
 	private config!: ConfigObject;
 	private importSpecs = new Set<string>();

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import ts from "typescript";
-import { TypeKind } from "../enums";
 import { getDeclaration, getSymbol, IsPrimive } from ".";
+import { TypeKind } from "../enums";
 
 const validators: Record<TypeKind, (type: ts.Type) => boolean> = {
 	[TypeKind.Unknown]: () => false,
@@ -10,9 +10,12 @@ const validators: Record<TypeKind, (type: ts.Type) => boolean> = {
 		const declaration = getDeclaration(getSymbol(v));
 		return declaration !== undefined && ts.isInterfaceDeclaration(declaration);
 	},
-	[TypeKind.Object]: (v) => {
-		const declaration = getDeclaration(getSymbol(v));
-		return declaration !== undefined && ts.isObjectLiteralExpression(declaration);
+	[TypeKind.Object]: (type) => {
+		const declaration = getDeclaration(getSymbol(type));
+		return (
+			(declaration !== undefined && ts.isObjectLiteralExpression(declaration)) ||
+			(type.flags | ts.TypeFlags.ObjectFlagsType) == ts.TypeFlags.ObjectFlagsType
+		);
 	},
 	[TypeKind.Class]: (v) => {
 		const declaration = getDeclaration(getSymbol(v));

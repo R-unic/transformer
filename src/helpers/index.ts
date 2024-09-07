@@ -162,7 +162,7 @@ function GetSymbolNamespace(type: ts.Type) {
 	const declaration = getDeclaration(symbol);
 
 	if (!declaration) {
-		return "Unknown";
+		return "UnknownDeclaration";
 	}
 
 	const filePath = declaration.getSourceFile().fileName;
@@ -191,7 +191,7 @@ export function GetSymbolUID(symbol: ts.Symbol) {
 	const declaration = getDeclaration(symbol);
 
 	if (!declaration) {
-		return "Unknown";
+		return "UnknownDeclaration";
 	}
 
 	return GenerateUID(declaration.getSourceFile().fileName, symbol.name);
@@ -206,7 +206,7 @@ export function CreateIDGenerator() {
 }
 
 export function GetDeclarationName(type: ts.Type) {
-	const declaration = getDeclaration(type.symbol);
+	const declaration = getDeclaration(getSymbol(type));
 	if (!declaration || !ts.isNamedDeclaration(declaration)) return "UnknownDeclaration";
 
 	return declaration.name.getText();
@@ -239,7 +239,7 @@ export function IsCanRegisterType(node: ts.Node) {
 }
 
 export function GetTypeName(type: ts.Type) {
-	if (type.symbol) {
+	if (getSymbol(type)) {
 		return GetDeclarationName(type);
 	} else if (IsDefinedType(type)) {
 		return `defined`;
@@ -253,13 +253,15 @@ export function GetTypeName(type: ts.Type) {
 		return `${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
 		return (type as ts.StringLiteralType).value;
+	} else if (type.flags & ts.TypeFlags.ObjectFlagsType) {
+		return "object";
 	}
 
 	return "Unknown";
 }
 
 export function GetTypeNamespace(type: ts.Type) {
-	if (type.symbol) {
+	if (getSymbol(type)) {
 		return GetSymbolNamespace(type);
 	}
 
@@ -287,7 +289,7 @@ export function IsContainerNode(node: ts.Node) {
 }
 
 export function GetTypeUid(type: ts.Type) {
-	if (type.symbol) {
+	if (getSymbol(type)) {
 		return GetSymbolUID(getSymbol(type));
 	} else if (IsDefinedType(type)) {
 		return `Primitive:defined`;
@@ -301,6 +303,8 @@ export function GetTypeUid(type: ts.Type) {
 		return `PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
 	} else if (type.flags & ts.TypeFlags.StringLiteral) {
 		return `PrimitiveString:${(type as ts.StringLiteralType).value}`;
+	} else if (type.flags & ts.TypeFlags.ObjectFlagsType) {
+		return `Object`;
 	}
 
 	return "UnknownType";

@@ -1,17 +1,27 @@
 import ts, { ConstructorDeclaration, MethodDeclaration, MethodSignature, NodeArray } from "typescript";
-import { getDeclaration, GetDeclarationName, getSymbol, getType, GetTypeName, GetTypeNamespace, GetTypeUid } from ".";
+import {
+	getDeclaration,
+	GetDeclarationName,
+	getSymbol,
+	getType,
+	GetTypeName,
+	GetTypeNamespace,
+	GetTypeUid,
+	IsPrimive,
+} from ".";
 import { ConstructorInfo, Method, Parameter, Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformContext } from "../transformer";
-import { GetTypeKind } from "./get-type-kind";
 import { f } from "./factory";
+import { GetTypeKind } from "./get-type-kind";
+import { Logger } from "./logger";
 
 function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
-	if (!declaration || !ts.isTypeLiteralNode(declaration)) {
+	if (declaration || IsPrimive(type)) {
 		const fullName = GetTypeUid(type);
 		return ReflectionRuntime.__GetType(fullName);
 	}
@@ -19,9 +29,13 @@ function GetReferenceType(type: ts.Type) {
 	return GenerateTypeDescriptionFromNode(type);
 }
 
-function GetInterfaces(node?: ts.Node) {
-	if (node === undefined || (!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node))) return [];
-
+function GetInterfaces(node?: ts.Node, nodeType?: ts.Type) {
+	if (
+		node === undefined ||
+		nodeType === undefined ||
+		(!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node))
+	)
+		return [];
 	if (!node.heritageClauses) return [];
 
 	const heritageClause = node.heritageClauses.find((clause) => {
@@ -34,10 +48,30 @@ function GetInterfaces(node?: ts.Node) {
 	if (!heritageClause) return [];
 
 	const typeChecker = TransformContext.Instance.typeChecker;
-	return heritageClause.types.map((node) => {
-		const type = typeChecker.getTypeAtLocation(node);
-		return GetReferenceType(type);
-	});
+	return heritageClause.types
+		.map((node) => {
+			const expression = node.expression;
+			if (!ts.isIdentifier(expression)) return;
+
+			const expressionType = typeChecker.getTypeAtLocation(expression);
+			const declaration = getDeclaration(getSymbol(expressionType));
+			if (!declaration) return;
+
+			// Check if interface declared after type
+			if (declaration.getSourceFile().fileName === node.getSourceFile().fileName) {
+				if (declaration.pos > node.pos) {
+					Logger.warn(
+						`Interface ${GetTypeUid(expressionType)} is declared after ${GetTypeUid(
+							nodeType,
+						)}\nType will not have a reference to the interface type`,
+					);
+				}
+			}
+
+			const type = typeChecker.getTypeAtLocation(node);
+			return GetReferenceType(type);
+		})
+		.filter((type) => type !== undefined) as Type[];
 }
 
 function GetAccessModifier(modifiers?: NodeArray<ts.ModifierLike>) {
@@ -174,16 +208,15 @@ function GetReferenseValue(type: ts.Type) {
 
 export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
 	const declaration = getDeclaration(getSymbol(type));
-	const fullName = GetTypeUid(type);
 
 	return {
 		Name: GetTypeName(type),
-		FullName: fullName,
+		FullName: GetTypeUid(type),
 		Assembly: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
 		Constructor: GetConstructor(declaration),
 		BaseType: GetBaseType(type),
-		Interfaces: GetInterfaces(declaration),
+		Interfaces: GetInterfaces(declaration, type),
 		Properties: GetProperties(type),
 		Methods: GetMethods(declaration),
 		Kind: GetTypeKind(type),
