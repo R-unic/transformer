@@ -11,7 +11,7 @@ export function VisitClassDeclaration(context: TransformContext, node: ts.ClassD
 	if (!IsCanRegisterType(node)) return node;
 
 	const typeChecker = TransformContext.Instance.typeChecker;
-	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node));
+	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
 
 	return PasteNodeInStaticBlock(node, [
 		ReflectionRuntime.RegisterType(typeDescription),

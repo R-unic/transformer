@@ -17,13 +17,15 @@ import { f } from "./factory";
 import { GetTypeKind } from "./get-type-kind";
 import { Logger } from "./logger";
 
+let scheduledType: string | undefined;
+
 function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
 	if ((declaration || IsPrimive(type)) && !type.isTypeParameter()) {
 		const fullName = GetTypeUid(type);
-		return ReflectionRuntime.__GetType(fullName);
+		return ReflectionRuntime.__GetType(fullName, scheduledType !== undefined && fullName === scheduledType);
 	}
 
 	return GenerateTypeDescriptionFromNode(type);
@@ -223,12 +225,17 @@ function GetConstraint(type: ts.Type): Type | undefined {
 	return GetReferenceType(constraint);
 }
 
-export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
+export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = false): Type {
 	const declaration = getDeclaration(getSymbol(type));
+	const fullName = GetTypeUid(type);
 
-	return {
+	if (schedulingType) {
+		scheduledType = fullName;
+	}
+
+	const decscription = {
 		Name: GetTypeName(type),
-		FullName: GetTypeUid(type),
+		FullName: fullName,
 		Assembly: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
 		Constructor: GetConstructor(declaration),
@@ -239,4 +246,10 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type): Type {
 		Kind: GetTypeKind(type),
 		Constraint: GetConstraint(type),
 	};
+
+	if (schedulingType) {
+		scheduledType = undefined;
+	}
+
+	return decscription;
 }

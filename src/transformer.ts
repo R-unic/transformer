@@ -6,7 +6,7 @@ import { ConfigObject, createConfig } from "./config";
 import { PackageInfo, TSConfig } from "./declarations";
 import { CreateIDGenerator, HaveTag } from "./helpers";
 import { f } from "./helpers/factory";
-import { LibraryName, Tags } from "./project-config.json";
+import { Tags } from "./project-config.json";
 import * as projectConfig from "./project-config.json";
 import { Transformers } from "./transformers";
 
@@ -154,7 +154,7 @@ export class TransformContext {
 					),
 				),
 			),
-			this.factory.createStringLiteral(LibraryName),
+			this.factory.createStringLiteral(projectConfig.LibraryNames[0]),
 			undefined,
 		);
 	}
@@ -200,7 +200,7 @@ export class TransformContext {
 			if (!ts.isImportDeclaration(element)) return false;
 			if (!ts.isStringLiteral(element.moduleSpecifier)) return this.factory;
 
-			return element.moduleSpecifier.text === LibraryName;
+			return projectConfig.LibraryNames.includes(element.moduleSpecifier.text);
 		});
 
 		if (index !== -1) {
@@ -225,11 +225,7 @@ export class TransformContext {
 			callback?.(newNode);
 
 			const newNodes = [...this.addedNodes.Before, newNode, ...this.addedNodes.After];
-
-			newNodes.forEach((node) => {
-				(node.parent as ts.Node) = parent;
-				result.push(node);
-			});
+			result.push(...newNodes);
 
 			clearContext();
 		});

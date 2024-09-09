@@ -69,7 +69,11 @@ function findPackageJsonAndTSConfigFromFilePath(filePath: string) {
 function readSrcAndOutDir(tsConfigPath: string) {
 	const tsConfig = ts.readConfigFile(tsConfigPath, ts.sys.readFile);
 	const parsedTsConfig = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, path.dirname(tsConfigPath));
-	return { srcDir: parsedTsConfig.options.rootDir, outDir: parsedTsConfig.options.outDir };
+
+	return {
+		srcDir: parsedTsConfig.options.rootDir ?? parsedTsConfig.options.baseUrl,
+		outDir: parsedTsConfig.options.outDir,
+	};
 }
 
 function removeLastFolder(_path: string) {
@@ -79,18 +83,22 @@ function removeLastFolder(_path: string) {
 
 function findPackageNameAndSrcOutDir(filePath: string) {
 	let result: AssemblyInfo | undefined;
+	let minLenght = Infinity;
 
-	packageJsons.forEach(({ packageName, tsConfigPath }, packagePath) => {
+	tsconfigs.forEach(({ srcDir, outDir, packagePath }) => {
 		if (result) return;
 
 		const relativePath = path.relative(packagePath, filePath);
+		const packageName = packageJsons.get(packagePath)!.packageName;
 		if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) return;
+		if (relativePath.length > minLenght) return;
+		minLenght = relativePath.length;
 
 		result = {
 			PackageName: packageName,
 			PackagePath: removeLastFolder(packagePath),
-			SrcDir: tsconfigs.get(tsConfigPath)!.srcDir,
-			OutDir: tsconfigs.get(tsConfigPath)!.outDir,
+			SrcDir: srcDir,
+			OutDir: outDir,
 		};
 	});
 
@@ -238,6 +246,9 @@ export function IsCanRegisterType(node: ts.Node) {
 		: HaveReflectTag(node) && !TransformContext.Instance.IsDisabledRegister;
 }
 
+export function AnyMatch<T>(element: T, array: T[]) {
+	return array.some((item) => item === element);
+}
 export function GetTypeName(type: ts.Type) {
 	if (getSymbol(type)) {
 		return GetDeclarationName(type);
@@ -269,15 +280,11 @@ export function GetTypeNamespace(type: ts.Type) {
 }
 
 export function IsPrimive(type: ts.Type) {
-	if (type.flags & ts.TypeFlags.Intrinsic) {
-		return true;
-	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
-		return true;
-	} else if (type.flags & ts.TypeFlags.StringLiteral) {
-		return true;
-	}
-
-	return false;
+	return (
+		(type.flags | ts.TypeFlags.Intrinsic) === ts.TypeFlags.Intrinsic ||
+		(type.flags | ts.TypeFlags.NumberLiteral) === ts.TypeFlags.NumberLiteral ||
+		(type.flags | ts.TypeFlags.StringLiteral) === ts.TypeFlags.StringLiteral
+	);
 }
 
 export function WrapInNeverExpression(expression: ts.Expression) {

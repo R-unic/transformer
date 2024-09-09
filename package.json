@@ -1,6 +1,6 @@
 {
 	"name": "rbxts-transformer-reflection",
-	"version": "1.0.0",
+	"version": "1.0.2",
 	"description": "Library that allows you to work with types in runtime!",
 	"main": "out/index.js",
 	"author": "Tesmi (https://github.com/Tesmi-Develop)",
