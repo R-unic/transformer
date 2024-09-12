@@ -1,8 +1,8 @@
 import ts from "typescript";
 import { CollectCallExpressionChain, IsCallExpressionWithGeneric, ResolveChain } from "../helpers/call-expressions";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 
-export function VisitVarriableStatement(state: TransformContext, node: ts.VariableStatement) {
+export function VisitVarriableStatement(state: TransformState, node: ts.VariableStatement) {
 	const declaration = node.declarationList.declarations[0];
 	const initializer = declaration.initializer;
 

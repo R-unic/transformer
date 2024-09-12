@@ -1,9 +1,9 @@
 import ts from "typescript";
 import { GenerateUID, getType } from "../helpers";
-import { TransformContext } from "../transformer";
 import { f } from "../helpers/factory";
+import { TransformState } from "../transformer";
 
-export function VisitCreateAttribute(state: TransformContext, node: ts.CallExpression) {
+export function VisitCreateAttribute(state: TransformState, node: ts.CallExpression) {
 	const typeChecker = state.typeChecker;
 
 	const identical = node.expression;

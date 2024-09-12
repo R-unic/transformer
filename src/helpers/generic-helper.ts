@@ -1,7 +1,7 @@
 import ts from "typescript";
 import { getSymbol, GetTypeUid } from ".";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { GenerateGenericsFromAttributeApi } from "../transformers/transform-attribute-api";
 import { ConvertValueToExpression } from "../type-builders";
 import { f } from "./factory";
@@ -57,7 +57,7 @@ export function GenerateSetupGenericParameters(node: ts.CallExpression) {
 
 	return ReflectionRuntime.SetupGenericParameters(
 		node.typeArguments.map((node) => {
-			const type = TransformContext.Instance.typeChecker.getTypeFromTypeNode(node);
+			const type = TransformState.Instance.typeChecker.getTypeFromTypeNode(node);
 
 			if (type.isTypeParameter()) {
 				const index = GetGenericIndex(type);

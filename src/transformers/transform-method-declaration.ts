@@ -1,8 +1,8 @@
 import ts from "typescript";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { TransformAnyFunction } from "./transform-any-function";
 
-export function VisitMethodDeclaration(context: TransformContext, node: ts.MethodDeclaration) {
+export function VisitMethodDeclaration(context: TransformState, node: ts.MethodDeclaration) {
 	const result = TransformAnyFunction(context, node);
 	if (!result) return node;
 

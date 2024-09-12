@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ts from "typescript";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { f } from "./factory";
 import { GenerateSetupGenericParameters } from "./generic-helper";
 
@@ -75,7 +75,7 @@ export function ResolveChain(chain: (ts.CallExpression | ts.PropertyAccessExpres
 			return;
 		}
 
-		const newName = `CallResult_${TransformContext.Instance.NextID}`;
+		const newName = `CallResult_${TransformState.Instance.NextID}`;
 		const localNodes: ts.Statement[] = [];
 		let expression: ts.Expression = lastName
 			? f.call(ConvertInAccessPath([f.identifier(lastName), ...path]))

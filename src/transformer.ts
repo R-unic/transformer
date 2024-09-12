@@ -6,14 +6,14 @@ import { ConfigObject, createConfig } from "./config";
 import { PackageInfo, TSConfig } from "./declarations";
 import { CreateIDGenerator, HaveTag } from "./helpers";
 import { f } from "./helpers/factory";
-import { Tags } from "./project-config.json";
 import * as projectConfig from "./project-config.json";
+import { Tags } from "./project-config.json";
 import { Transformers } from "./transformers";
 
 const UnknownPackageName = "@@this";
 
-export class TransformContext {
-	public static Instance: TransformContext;
+export class TransformState {
+	public static Instance: TransformState;
 	public readonly factory: ts.NodeFactory;
 	public readonly typeChecker: ts.TypeChecker;
 	public readonly projectConfig = projectConfig;
@@ -29,7 +29,7 @@ export class TransformContext {
 	private isDisabledRegister = false;
 
 	constructor(public program: ts.Program, public context: ts.TransformationContext, public tsConfig: TSConfig) {
-		TransformContext.Instance = this;
+		TransformState.Instance = this;
 		this.setupDefaultTSconfigParams();
 
 		this.typeChecker = program.getTypeChecker();
@@ -306,7 +306,7 @@ export class TransformContext {
 	}
 }
 
-function visitNode(context: TransformContext, node: ts.Node): ts.Node {
+function visitNode(context: TransformState, node: ts.Node): ts.Node {
 	const transformer = Transformers.get(node.kind);
 	if (transformer) {
 		return transformer(context, node);

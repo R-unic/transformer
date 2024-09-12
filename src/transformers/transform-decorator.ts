@@ -2,9 +2,9 @@
 import ts from "typescript";
 import { AttributeVid as AttributeKind } from "../declarations";
 import { getType } from "../helpers";
-import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformContext } from "../transformer";
 import { f } from "../helpers/factory";
+import { ReflectionRuntime } from "../reflect-runtime";
+import { TransformState } from "../transformer";
 
 const AttributeKinds: Record<AttributeKind, (node: ts.Decorator) => [boolean, unknown[]]> = {
 	class: (node: ts.Decorator) => {
@@ -35,7 +35,7 @@ function GetAttributeKind(node: ts.Decorator) {
 
 const varriableName = "decorator";
 
-export function VisitDecorator(state: TransformContext, node: ts.Decorator) {
+export function VisitDecorator(state: TransformState, node: ts.Decorator) {
 	const typeChecker = state.typeChecker;
 	const callExpression = node.expression;
 	if (!ts.isCallExpression(callExpression)) return node;

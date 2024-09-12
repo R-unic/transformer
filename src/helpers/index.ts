@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
 import path from "path";
-import ts from "typescript";
+import ts, { ObjectType } from "typescript";
 import { Tags } from "../project-config.json";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { f } from "./factory";
+import { GetRobloxInstanceType } from "./generate-type-description";
 
 const nodeModulesPattern = "/node_modules/";
 const PATH_SEPARATOR_REGEX = /\\/g;
@@ -24,6 +25,17 @@ export function getDeclaration(symbol?: ts.Symbol): ts.Declaration | undefined {
 	}
 
 	return symbol.valueDeclaration || symbol.declarations?.[0];
+}
+
+export function IsAnonymousObject(type: ts.Type) {
+	return (
+		(type.flags | ts.TypeFlags.ObjectFlagsType) === ts.TypeFlags.ObjectFlagsType &&
+		(type as ObjectType).objectFlags === ts.ObjectFlags.Anonymous
+	);
+}
+
+export function IsRobloxInstance(type: ts.Type) {
+	return type.getProperty("_nominal_Instance") !== undefined;
 }
 
 export function getSymbol(type: ts.Type): ts.Symbol {
@@ -153,7 +165,7 @@ function IsDefinedType(type: ts.Type) {
 }
 
 export function getType(symbol: ts.Symbol): ts.Type | undefined {
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 
 	if (symbol.flags == ts.SymbolFlags.Interface) {
 		return typeChecker.getDeclaredTypeOfSymbol(symbol);
@@ -233,24 +245,24 @@ export function IsReflectSignature(signature: ts.Signature | ts.Declaration) {
 	const declaration = IsNode(signature) ? (signature as ts.Declaration) : (signature as ts.Signature).declaration;
 	return (
 		declaration &&
-		(TransformContext.Instance.tsConfig.reflectAllCalls
-			? !TransformContext.Instance.IsDisabledReflect
-			: (HaveReflectTag(declaration) || TransformContext.Instance.IsEnableGlobalReflect) &&
-			  !TransformContext.Instance.IsDisabledReflect)
+		(TransformState.Instance.tsConfig.reflectAllCalls
+			? !TransformState.Instance.IsDisabledReflect
+			: (HaveReflectTag(declaration) || TransformState.Instance.IsEnableGlobalReflect) &&
+			  !TransformState.Instance.IsDisabledReflect)
 	);
 }
 
 export function IsCanRegisterType(node: ts.Node) {
-	return TransformContext.Instance.tsConfig.autoRegister
-		? !TransformContext.Instance.IsDisabledRegister
-		: HaveReflectTag(node) && !TransformContext.Instance.IsDisabledRegister;
+	return TransformState.Instance.tsConfig.autoRegister
+		? !TransformState.Instance.IsDisabledRegister
+		: HaveReflectTag(node) && !TransformState.Instance.IsDisabledRegister;
 }
 
 export function AnyMatch<T>(element: T, array: T[]) {
 	return array.some((item) => item === element);
 }
 export function GetTypeName(type: ts.Type) {
-	if (getSymbol(type)) {
+	if (getSymbol(type) && !IsAnonymousObject(type)) {
 		return GetDeclarationName(type);
 	} else if (IsDefinedType(type)) {
 		return `defined`;
@@ -272,7 +284,7 @@ export function GetTypeName(type: ts.Type) {
 }
 
 export function GetTypeNamespace(type: ts.Type) {
-	if (getSymbol(type)) {
+	if (getSymbol(type) || IsAnonymousObject(type)) {
 		return GetSymbolNamespace(type);
 	}
 
@@ -296,24 +308,39 @@ export function IsContainerNode(node: ts.Node) {
 }
 
 export function GetTypeUid(type: ts.Type) {
+	if (IsRobloxInstance(type)) {
+		return `RobloxInstance:${GetRobloxInstanceType(type)}`;
+	}
+
 	if (type.isTypeParameter()) {
 		return `TypeParameter:${GetTypeName(type)}`;
 	}
-	if (getSymbol(type)) {
+
+	if (getSymbol(type) && !IsAnonymousObject(type)) {
 		return GetSymbolUID(getSymbol(type));
-	} else if (IsDefinedType(type)) {
+	}
+
+	if (IsDefinedType(type)) {
 		return `Primitive:defined`;
-	} else if (type.flags & ts.TypeFlags.Intrinsic) {
+	}
+
+	if (type.flags & ts.TypeFlags.Intrinsic) {
 		const name = (type as ts.IntrinsicType).intrinsicName;
 		if (name === "true" || name === "false") {
 			return "Primitive:boolean";
 		}
 		return `Primitive:${name}`;
-	} else if (type.flags & ts.TypeFlags.NumberLiteral) {
+	}
+
+	if (type.flags & ts.TypeFlags.NumberLiteral) {
 		return `PrimitiveNumber:${(type as ts.NumberLiteralType).value}`;
-	} else if (type.flags & ts.TypeFlags.StringLiteral) {
+	}
+
+	if (type.flags & ts.TypeFlags.StringLiteral) {
 		return `PrimitiveString:${(type as ts.StringLiteralType).value}`;
-	} else if (type.flags & ts.TypeFlags.ObjectFlagsType) {
+	}
+
+	if (type.flags & ts.TypeFlags.ObjectFlagsType) {
 		return `Object`;
 	}
 

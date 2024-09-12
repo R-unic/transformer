@@ -1,11 +1,11 @@
 import ts from "typescript";
 import { GenerateUID, getDeclaration, getSymbol } from "../helpers";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 
 const AttributeAPITag = "AttributeAPI";
 
-function GetAttributeUID(state: TransformContext, node: ts.CallExpression) {
+function GetAttributeUID(state: TransformState, node: ts.CallExpression) {
 	const typeArgument = node.typeArguments?.[0];
 	if (!typeArgument || !ts.isTypeQueryNode(typeArgument)) return node;
 
@@ -23,7 +23,7 @@ export function GenerateGenericsFromAttributeApi(node: ts.CallExpression) {
 	const expression = node.expression;
 	if (!ts.isPropertyAccessExpression(expression)) return;
 
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	const type = typeChecker.getTypeAtLocation(expression);
 	const declaration = getDeclaration(getSymbol(type));
 	if (!declaration || !ts.isMethodDeclaration(declaration)) return;
@@ -35,5 +35,5 @@ export function GenerateGenericsFromAttributeApi(node: ts.CallExpression) {
 	const typeArgument = node.typeArguments?.[0];
 	if (!typeArgument) return;
 
-	return ReflectionRuntime.SetupGenericParameters([GetAttributeUID(TransformContext.Instance, node)]);
+	return ReflectionRuntime.SetupGenericParameters([GetAttributeUID(TransformState.Instance, node)]);
 }

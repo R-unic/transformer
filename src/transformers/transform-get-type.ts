@@ -1,14 +1,14 @@
 import ts from "typescript";
 import { GetTypeUid } from "../helpers";
 import { GenerateIndexOfGenerics, GetGenericIndex } from "../helpers/generic-helper";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { ConvertValueToCallExpression } from "../type-builders";
 
 function TransformGetType(node: ts.CallExpression, typeId: string | ts.ElementAccessExpression) {
 	return ConvertValueToCallExpression((node.expression as ts.Identifier).escapedText.toString(), [typeId]);
 }
 
-export function VisitGetType(state: TransformContext, node: ts.CallExpression) {
+export function VisitGetType(state: TransformState, node: ts.CallExpression) {
 	if (!node.parent) return;
 
 	if (!ts.isIdentifier(node.expression)) return;

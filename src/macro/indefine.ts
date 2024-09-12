@@ -1,12 +1,12 @@
 import ts from "typescript";
 import { GetTypeUid } from "../helpers";
+import { TransformState } from "../transformer";
 import { ConvertValueToExpression } from "../type-builders";
-import { TransformContext } from "../transformer";
 
 export function TransformIndefine(node: ts.CallExpression) {
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	const typeArgument = node.typeArguments?.[0];
-	if (!typeArgument) return TransformContext.Instance.Transform(node);
+	if (!typeArgument) return TransformState.Instance.Transform(node);
 
 	const id = GetTypeUid(typeChecker.getTypeFromTypeNode(typeArgument));
 	return ConvertValueToExpression(id);

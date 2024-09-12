@@ -9,9 +9,9 @@ import {
 	GENERICS_ARRAY,
 } from "../helpers/generic-helper";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 
-export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(state: TransformContext, node: T) {
+export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(state: TransformState, node: T) {
 	const typeParameters = node.typeParameters;
 	const isReflectSignature = IsReflectSignature(node);
 

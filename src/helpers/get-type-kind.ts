@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import ts from "typescript";
-import { getDeclaration, getSymbol, IsPrimive } from ".";
+import { getDeclaration, getSymbol, IsPrimive, IsRobloxInstance } from ".";
 import { TypeKind } from "../enums";
 
 const validators: Record<TypeKind, (type: ts.Type) => boolean> = {
@@ -26,10 +26,17 @@ const validators: Record<TypeKind, (type: ts.Type) => boolean> = {
 		const declaration = getDeclaration(getSymbol(v));
 		return declaration !== undefined && ts.isEnumDeclaration(declaration);
 	},
+	[TypeKind.Instance]: (v) => IsRobloxInstance(v),
 };
 
 export function GetTypeKind(type: ts.Type) {
+	let found: TypeKind | undefined;
+
 	for (const [kind, validator] of Object.entries(validators)) {
-		if (validator(type)) return Number(kind) as TypeKind;
+		if (validator(type)) {
+			found = Number(kind) as TypeKind;
+		}
 	}
+
+	return found;
 }

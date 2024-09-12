@@ -1,8 +1,8 @@
 import ts from "typescript";
 import { CollectCallExpressionChain, IsCallExpressionWithGeneric, ResolveChain } from "../helpers/call-expressions";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 
-export function VisitExpressionStatement(state: TransformContext, node: ts.ExpressionStatement) {
+export function VisitExpressionStatement(state: TransformState, node: ts.ExpressionStatement) {
 	if (ts.isCallExpression(node.expression)) {
 		let haveCallExpressWithGeneric = false;
 

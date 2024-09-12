@@ -7,15 +7,18 @@ import {
 	GetTypeName,
 	GetTypeNamespace,
 	GetTypeUid,
+	IsAnonymousObject,
 	IsPrimive,
+	IsRobloxInstance,
 } from ".";
-import { ConstructorInfo, Method, Parameter, Property, Type } from "../declarations";
+import { ConditionalType, ConstructorInfo, Method, Parameter, Property, Type } from "../declarations";
 import { AccessModifier } from "../enums";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { f } from "./factory";
 import { GetTypeKind } from "./get-type-kind";
 import { Logger } from "./logger";
+import { GetRobloxInstanceTypeFromType } from "./get-roblox-instance-type";
 
 let scheduledType: string | undefined;
 
@@ -23,7 +26,7 @@ function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
-	if ((declaration || IsPrimive(type)) && !type.isTypeParameter()) {
+	if ((declaration || IsPrimive(type)) && !type.isTypeParameter() && !IsAnonymousObject(type)) {
 		const fullName = GetTypeUid(type);
 		return ReflectionRuntime.__GetType(fullName, scheduledType !== undefined && fullName === scheduledType);
 	}
@@ -49,7 +52,7 @@ function GetInterfaces(node?: ts.Node, nodeType?: ts.Type) {
 	});
 	if (!heritageClause) return [];
 
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	return heritageClause.types
 		.map((node) => {
 			const expression = node.expression;
@@ -107,7 +110,7 @@ function HaveUndefined(type: ts.Type) {
 function GetTypeDescription(type: ts.Type): Type;
 function GetTypeDescription(node: ts.Node): Type;
 function GetTypeDescription(node: ts.Node | ts.Type) {
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	const type = ts.isNode(node as ts.Node) ? typeChecker.getTypeAtLocation(node as ts.Node) : (node as ts.Type);
 	return GetReferenceType(type);
 }
@@ -155,7 +158,7 @@ function GetBaseType(type: ts.Type) {
 }
 
 function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	const type = typeChecker.getTypeAtLocation(parameter);
 
 	return {
@@ -166,7 +169,7 @@ function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Param
 }
 
 function GenerateMethodDescription(method: ts.MethodDeclaration | ts.MethodSignature, ctor: ts.Declaration): Method {
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	const signature = typeChecker.getSignatureFromDeclaration(method);
 	const methodName = method.name.getText();
 	const isInterface = ts.isInterfaceDeclaration(ctor);
@@ -225,6 +228,27 @@ function GetConstraint(type: ts.Type): Type | undefined {
 	return GetReferenceType(constraint);
 }
 
+function GetConditionalType(type: ts.Type): ConditionalType | undefined {
+	if ((type.flags | ts.TypeFlags.Conditional) !== ts.TypeFlags.Conditional) return;
+
+	const typeChecker = TransformState.Instance.typeChecker;
+	const ct = (type as ts.ConditionalType).root.node;
+	const extendsType = typeChecker.getTypeAtLocation(ct.extendsType);
+	const trueType = typeChecker.getTypeAtLocation(ct.trueType);
+
+	return {
+		Extends: GetReferenceType(extendsType),
+		TrueType: GetReferenceType(trueType),
+		FalseType: GetReferenceType(typeChecker.getTypeAtLocation(ct.falseType)),
+	};
+}
+
+export function GetRobloxInstanceType(type: ts.Type) {
+	if (!IsRobloxInstance(type)) return;
+
+	return GetRobloxInstanceTypeFromType(type).symbol.name;
+}
+
 export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = false): Type {
 	const declaration = getDeclaration(getSymbol(type));
 	const fullName = GetTypeUid(type);
@@ -239,12 +263,14 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = 
 		Assembly: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
 		Constructor: GetConstructor(declaration),
+		ConditionalType: GetConditionalType(type),
 		BaseType: GetBaseType(type),
 		Interfaces: GetInterfaces(declaration, type),
 		Properties: GetProperties(type),
 		Methods: GetMethods(declaration),
 		Kind: GetTypeKind(type),
 		Constraint: GetConstraint(type),
+		RobloxInstanceType: GetRobloxInstanceType(type),
 	};
 
 	if (schedulingType) {

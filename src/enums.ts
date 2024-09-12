@@ -14,4 +14,5 @@ export enum TypeKind {
 	Object = 4,
 	TypeParameter = 5,
 	Enum = 6,
+	Instance = 7,
 }

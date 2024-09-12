@@ -4,13 +4,13 @@ import { PasteNodeInStaticBlock } from "../helpers/factories";
 import { f } from "../helpers/factory";
 import { GenerateTypeDescriptionFromNode } from "../helpers/generate-type-description";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 
-export function VisitClassDeclaration(context: TransformContext, node: ts.ClassDeclaration) {
+export function VisitClassDeclaration(context: TransformState, node: ts.ClassDeclaration) {
 	node = context.Transform(node);
 	if (!IsCanRegisterType(node)) return node;
 
-	const typeChecker = TransformContext.Instance.typeChecker;
+	const typeChecker = TransformState.Instance.typeChecker;
 	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
 
 	return PasteNodeInStaticBlock(node, [

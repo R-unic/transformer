@@ -1,12 +1,12 @@
 import ts from "typescript";
 import { IsReflectSignature as IsReflectCallExpression } from "../helpers";
 import { CollectCallExpressionChain, IsCallExpressionWithGeneric, ResolveChain } from "../helpers/call-expressions";
-import { TransformContext } from "../transformer";
 import { f } from "../helpers/factory";
+import { TransformState } from "../transformer";
 
 const VARRIABLE_NAME = "__callExpressionChain";
 
-export function TransformCallExpressionChain(state: TransformContext, node: ts.CallExpression) {
+export function TransformCallExpressionChain(state: TransformState, node: ts.CallExpression) {
 	const typeChecker = state.typeChecker;
 	let haveCallExpressWithGeneric = false;
 	let identifierName: string | undefined;

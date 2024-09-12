@@ -4,12 +4,12 @@ import { GenerateTypeDescriptionFromNode } from "../helpers/generate-type-descri
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformState } from "../transformer";
 
-export function VisitTypeAliasDeclaration(state: TransformState, node: ts.TypeAliasDeclaration) {
+export function VisitEnumDeclaration(state: TransformState, node: ts.EnumDeclaration) {
 	if (!HaveTag(node, state.projectConfig.Tags.reflect)) return node;
 
 	const typeChecker = TransformState.Instance.typeChecker;
 	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
 
-	state.AddNode([ReflectionRuntime.RegisterType(typeDescription)], "before");
-	return node;
+	state.AddNode([ReflectionRuntime.RegisterType(typeDescription)], "after");
+	return state.Transform(node);
 }

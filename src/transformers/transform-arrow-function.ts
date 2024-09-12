@@ -1,8 +1,8 @@
 import ts from "typescript";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { TransformAnyFunction } from "./transform-any-function";
 
-export function VisitArrowFunction(context: TransformContext, node: ts.ArrowFunction) {
+export function VisitArrowFunction(context: TransformState, node: ts.ArrowFunction) {
 	const result = TransformAnyFunction(context, node);
 	if (!result) return node;
 	const [updatedNode, block] = result;

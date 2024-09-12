@@ -1,9 +1,9 @@
 import ts from "typescript";
 import { getType } from "../helpers";
 import { f } from "../helpers/factory";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 
-export function VisitGetTypes(state: TransformContext, node: ts.CallExpression) {
+export function VisitGetTypes(state: TransformState, node: ts.CallExpression) {
 	if (!node.parent) return;
 
 	if (!ts.isIdentifier(node.expression)) return;

@@ -10,6 +10,7 @@ export interface Type {
 	readonly FullName: string;
 	readonly Assembly: string;
 	readonly Value?: unknown;
+	readonly ConditionalType?: ConditionalType;
 	readonly Constructor?: ConstructorInfo;
 	readonly Kind: TypeKind;
 	readonly BaseType: Type | undefined;
@@ -17,6 +18,13 @@ export interface Type {
 	readonly Properties: Property[];
 	readonly Methods: Method[];
 	readonly Constraint: Type | undefined;
+	readonly RobloxInstanceType?: string;
+}
+
+export interface ConditionalType {
+	readonly Extends: Type;
+	readonly TrueType: Type;
+	readonly FalseType: Type;
 }
 
 export interface Parameter {

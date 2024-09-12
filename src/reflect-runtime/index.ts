@@ -1,4 +1,4 @@
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { ConvertValueToCallExpression as CreateCallExpression } from "../type-builders";
 import { IReflectionRuntime } from "./types";
 
@@ -9,7 +9,7 @@ const proxy = new Proxy(
 			return (...args: unknown[]) => {
 				if (typeof functionName === "symbol") throw new Error(`Unsupported symbol`);
 
-				TransformContext.Instance.AddImportDeclaration(functionName);
+				TransformState.Instance.AddImportDeclaration(functionName);
 				return CreateCallExpression(functionName, args);
 			};
 		},

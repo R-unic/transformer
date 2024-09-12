@@ -1,12 +1,12 @@
 import ts from "typescript";
 import { TransformMacro } from "../macro";
-import { TransformContext } from "../transformer";
+import { TransformState } from "../transformer";
 import { TransformCallExpressionChain } from "./transform-call-expression-chain";
+import { VisitCreateAttribute } from "./transform-create-attribute";
 import { VisitGetType } from "./transform-get-type";
 import { VisitGetTypes } from "./transform-get-types";
-import { VisitCreateAttribute } from "./transform-create-attribute";
 
-export function VisitCallExpression(state: TransformContext, node: ts.CallExpression) {
+export function VisitCallExpression(state: TransformState, node: ts.CallExpression) {
 	let newNode = TransformMacro(node);
 	if (newNode) {
 		return newNode;
