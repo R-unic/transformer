@@ -16,9 +16,9 @@ import { AccessModifier } from "../enums";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformState } from "../transformer";
 import { f } from "./factory";
+import { GetRobloxInstanceTypeFromType } from "./get-roblox-instance-type";
 import { GetTypeKind } from "./get-type-kind";
 import { Logger } from "./logger";
-import { GetRobloxInstanceTypeFromType } from "./get-roblox-instance-type";
 
 let scheduledType: string | undefined;
 
@@ -26,12 +26,29 @@ function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
-	if ((declaration || IsPrimive(type)) && !type.isTypeParameter() && !IsAnonymousObject(type)) {
-		const fullName = GetTypeUid(type);
-		return ReflectionRuntime.__GetType(fullName, scheduledType !== undefined && fullName === scheduledType);
+	if (type.isTypeParameter()) {
+		return ReflectionRuntime.GetGenericParameter(GetDeclarationName(type));
 	}
 
-	return GenerateTypeDescriptionFromNode(type);
+	if ((declaration || IsPrimive(type)) && !IsAnonymousObject(type)) {
+		const typeChecker = TransformState.Instance.typeChecker;
+		const typeArguments: Type[] = [];
+
+		if (declaration) {
+			typeChecker.getTypeArguments(type as ts.TypeReference).forEach((typeArgument) => {
+				typeArguments.push(GetReferenceType(typeArgument));
+			});
+		}
+
+		const fullName = GetTypeUid(type);
+		return ReflectionRuntime.__GetType(
+			fullName,
+			scheduledType !== undefined && fullName === scheduledType,
+			typeArguments,
+		);
+	}
+
+	return GenerateTypeDescriptionFromNode(type)[0];
 }
 
 function GetInterfaces(node?: ts.Node, nodeType?: ts.Type) {
@@ -249,16 +266,26 @@ export function GetRobloxInstanceType(type: ts.Type) {
 	return GetRobloxInstanceTypeFromType(type).symbol.name;
 }
 
-export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = false): Type {
+function GetTypeParameters(type: ts.Type) {
+	const typeChecker = TransformState.Instance.typeChecker;
+	const types = typeChecker
+		.getTypeArguments(type as ts.TypeReference)
+		.map((type) => GenerateTypeDescriptionFromNode(type)[0]);
+	return [types, types.map((type) => ReflectionRuntime.GetGenericParameter(type.Name))] as const;
+}
+
+export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = false): [Type, Type[]] {
 	const declaration = getDeclaration(getSymbol(type));
 	const fullName = GetTypeUid(type);
+	const [typeParameters, wrappedTypeParameters] = GetTypeParameters(type);
 
 	if (schedulingType) {
 		scheduledType = fullName;
 	}
 
-	const decscription = {
+	const decscription: Type = {
 		Name: GetTypeName(type),
+		TypeParameters: wrappedTypeParameters,
 		FullName: fullName,
 		Assembly: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
@@ -277,5 +304,5 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = 
 		scheduledType = undefined;
 	}
 
-	return decscription;
+	return [decscription, typeParameters] as const;
 }

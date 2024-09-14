@@ -11,10 +11,10 @@ export function VisitClassDeclaration(context: TransformState, node: ts.ClassDec
 	if (!IsCanRegisterType(node)) return node;
 
 	const typeChecker = TransformState.Instance.typeChecker;
-	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
+	const [typeDescription, typeParams] = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
 
 	return PasteNodeInStaticBlock(node, [
-		ReflectionRuntime.RegisterType(typeDescription),
+		ReflectionRuntime.RegisterType(ReflectionRuntime.DefineGenericParameters(typeParams), typeDescription),
 		ReflectionRuntime.RegisterDataType(f.identifier(typeDescription.Name), typeDescription.FullName),
 	]);
 }

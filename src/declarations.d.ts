@@ -8,6 +8,7 @@ export type AttributeVid = "class" | "method" | "property" | "parameter";
 export interface Type {
 	readonly Name: string;
 	readonly FullName: string;
+	readonly TypeParameters: Type[];
 	readonly Assembly: string;
 	readonly Value?: unknown;
 	readonly ConditionalType?: ConditionalType;
@@ -19,6 +20,7 @@ export interface Type {
 	readonly Methods: Method[];
 	readonly Constraint: Type | undefined;
 	readonly RobloxInstanceType?: string;
+	readonly TypeParameters?: Type[];
 }
 
 export interface ConditionalType {

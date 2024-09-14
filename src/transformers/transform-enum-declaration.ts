@@ -8,8 +8,11 @@ export function VisitEnumDeclaration(state: TransformState, node: ts.EnumDeclara
 	if (!HaveTag(node, state.projectConfig.Tags.reflect)) return node;
 
 	const typeChecker = TransformState.Instance.typeChecker;
-	const typeDescription = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
+	const [typeDescription, typeParams] = GenerateTypeDescriptionFromNode(typeChecker.getTypeAtLocation(node), true);
 
-	state.AddNode([ReflectionRuntime.RegisterType(typeDescription)], "after");
+	state.AddNode(
+		[ReflectionRuntime.RegisterType(ReflectionRuntime.DefineGenericParameters(typeParams), typeDescription)],
+		"after",
+	);
 	return state.Transform(node);
 }
