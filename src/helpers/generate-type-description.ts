@@ -1,7 +1,8 @@
-import ts, { ConstructorDeclaration, MethodDeclaration, MethodSignature, NodeArray } from "typescript";
+import ts, { NodeArray } from "typescript";
 import {
 	getDeclaration,
 	GetDeclarationName,
+	GetDeclarationNameFromType,
 	getSymbol,
 	getType,
 	GetTypeName,
@@ -26,8 +27,14 @@ function GetReferenceType(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
+	// this type
+	if (type.isTypeParameter() && type.isThisType) {
+		const fullName = GetTypeUid(type);
+		return ReflectionRuntime.__GetType(fullName, true, []);
+	}
+
 	if (type.isTypeParameter()) {
-		return ReflectionRuntime.GetGenericParameter(GetDeclarationName(type));
+		return ReflectionRuntime.GetGenericParameter(GetDeclarationNameFromType(type));
 	}
 
 	if ((declaration || IsPrimive(type)) && !IsAnonymousObject(type)) {
@@ -174,60 +181,112 @@ function GetBaseType(type: ts.Type) {
 	return baseType ? GetReferenceType(baseType) : undefined;
 }
 
-function GenerateParameterDescription(parameter: ts.ParameterDeclaration): Parameter {
-	const typeChecker = TransformState.Instance.typeChecker;
-	const type = typeChecker.getTypeAtLocation(parameter);
+function GenerateParameterDescription(symbol: ts.Symbol): Parameter {
+	const declaration = getDeclaration(symbol);
+	const type = getType(symbol);
+
+	if (!type) {
+		throw `Failed to get type of parameter ${symbol.getName()}`;
+	}
 
 	return {
-		Name: parameter.name.getText(),
-		Optional: parameter.questionToken !== undefined,
+		Name: symbol.getName(),
+		Optional: declaration ? (declaration as ts.ParameterDeclaration).questionToken !== undefined : false,
 		Type: GetTypeDescription(ExcludeUndefined(type)),
 	};
 }
 
-function GenerateMethodDescription(method: ts.MethodDeclaration | ts.MethodSignature, ctor: ts.Declaration): Method {
-	const typeChecker = TransformState.Instance.typeChecker;
-	const signature = typeChecker.getSignatureFromDeclaration(method);
-	const methodName = method.name.getText();
-	const isInterface = ts.isInterfaceDeclaration(ctor);
-	if (!signature) throw new Error(`Could not find signature for ${method.name.getText()}`);
+function GenerateMethodDescription(signature: ts.Signature, symbol: ts.Symbol): Method {
+	const methodName = symbol.escapedName.toString();
+	const declaration = symbol.valueDeclaration as ts.MethodDeclaration;
+	const modifiers = declaration.modifiers;
+
+	if (!declaration) {
+		return {
+			Name: methodName,
+			Parameters: signature.parameters.map((parameter) => GenerateParameterDescription(parameter)),
+			ReturnType: GetTypeDescription(ExcludeUndefined(signature.getReturnType())),
+			AccessModifier: GetAccessModifier(modifiers),
+			IsStatic: false,
+			IsAbstract: false,
+			Callback: undefined,
+		};
+	}
+
+	const callback =
+		declaration.body === undefined
+			? undefined
+			: ReflectionRuntime.GetMethodCallback(
+					f.identifier(GetDeclarationName(declaration.parent! as ts.Declaration)),
+					methodName,
+			  );
+
+	if (!modifiers) {
+		return {
+			Name: methodName,
+			Parameters: signature.parameters.map((parameter) => GenerateParameterDescription(parameter)),
+			ReturnType: GetTypeDescription(ExcludeUndefined(signature.getReturnType())),
+			AccessModifier: GetAccessModifier(modifiers),
+			IsStatic: false,
+			IsAbstract: false,
+			Callback: callback,
+		};
+	}
 
 	return {
 		Name: methodName,
-		Parameters: method.parameters.map((parameter) => GenerateParameterDescription(parameter)),
+		Parameters: signature.parameters.map((parameter) => GenerateParameterDescription(parameter)),
 		ReturnType: GetTypeDescription(ExcludeUndefined(signature.getReturnType())),
-		AccessModifier: GetAccessModifier(method.modifiers),
-		IsStatic: method.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword) !== undefined,
-		IsAbstract: method.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.AbstractKeyword) !== undefined,
-		Callback: isInterface
-			? undefined
-			: ReflectionRuntime.GetMethodCallback(
-					f.identifier(GetDeclarationName(typeChecker.getTypeAtLocation(ctor))),
-					methodName,
-			  ),
+		AccessModifier: GetAccessModifier(modifiers),
+		IsStatic: modifiers.find((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword) !== undefined,
+		IsAbstract: modifiers.find((modifier) => modifier.kind === ts.SyntaxKind.AbstractKeyword) !== undefined,
+		Callback: callback,
 	};
 }
 
-function GetMethods(node?: ts.Node) {
-	if (node === undefined || (!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node))) return [];
+function GetMethods(type: ts.Type) {
+	const typeChecker = TransformState.Instance.typeChecker;
+	const members = type.getProperties();
 
-	const methodDeclarations = node.members.filter((v) => ts.isMethodDeclaration(v) || ts.isMethodSignature(v)) as (
-		| MethodDeclaration
-		| MethodSignature
-	)[];
-	return methodDeclarations.map((v) => GenerateMethodDescription(v, node));
+	return members
+		.filter(
+			(m) =>
+				(m.flags & ts.SymbolFlags.Method) === ts.SymbolFlags.Method ||
+				(m.flags & ts.SymbolFlags.Function) === ts.SymbolFlags.Function,
+		)
+		.flatMap((memberSymbol: ts.Symbol) => {
+			const declaration = getDeclaration(memberSymbol);
+
+			if (!declaration) {
+				return [];
+			}
+
+			let type = typeChecker.getTypeOfSymbolAtLocation(memberSymbol, declaration);
+
+			if (type.isUnion()) {
+				type = (type.types[0].flags === ts.TypeFlags.Undefined ? type.types[1] : type.types[0]) || type;
+			}
+
+			return type.getCallSignatures().map((signature) => GenerateMethodDescription(signature, memberSymbol));
+		});
 }
 
-function GetConstructor(node?: ts.Node): ConstructorInfo | undefined {
-	if (node === undefined || !ts.isClassDeclaration(node)) return;
+function GetConstructor(type: ts.Type): ConstructorInfo | undefined {
+	const constructors = type.getConstructSignatures();
+	const constructor = constructors.find((signature) => {
+		const declaration = signature.declaration;
+		if (!declaration || !ts.isConstructorDeclaration(declaration)) return false;
 
-	const constructor = node.members.find((member) => ts.isConstructorDeclaration(member)) as ConstructorDeclaration;
+		return declaration.body !== undefined;
+	});
 	if (!constructor) return;
+
+	const declaration = constructor.declaration as ts.ConstructorDeclaration;
 
 	return {
 		Parameters: constructor.parameters.map((parameter) => GenerateParameterDescription(parameter)),
-		AccessModifier: GetAccessModifier(constructor.modifiers),
-		Callback: ReflectionRuntime.GetConstructorCallback(f.identifier(node.name!.escapedText.toString())),
+		AccessModifier: GetAccessModifier(declaration.modifiers),
+		Callback: ReflectionRuntime.GetConstructorCallback(declaration.parent.name!),
 	};
 }
 
@@ -268,6 +327,7 @@ export function GetRobloxInstanceType(type: ts.Type) {
 
 function GetTypeParameters(type: ts.Type) {
 	const typeChecker = TransformState.Instance.typeChecker;
+
 	const types = typeChecker
 		.getTypeArguments(type as ts.TypeReference)
 		.map((type) => GenerateTypeDescriptionFromNode(type)[0]);
@@ -289,12 +349,12 @@ export function GenerateTypeDescriptionFromNode(type: ts.Type, schedulingType = 
 		FullName: fullName,
 		Assembly: GetTypeNamespace(type),
 		Value: GetReferenseValue(type),
-		Constructor: GetConstructor(declaration),
+		Constructor: GetConstructor(type),
 		ConditionalType: GetConditionalType(type),
 		BaseType: GetBaseType(type),
 		Interfaces: GetInterfaces(declaration, type),
 		Properties: GetProperties(type),
-		Methods: GetMethods(declaration),
+		Methods: GetMethods(type),
 		Kind: GetTypeKind(type),
 		Constraint: GetConstraint(type),
 		RobloxInstanceType: GetRobloxInstanceType(type),

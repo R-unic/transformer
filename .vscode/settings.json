@@ -11,5 +11,10 @@
 	"eslint.run": "onType",
 	"eslint.format.enable": true,
 	"typescript.tsdk": "node_modules/typescript/lib",
-	"editor.codeActionsOnSave": ["source.organizeImports", "source.fixAll", "source.addMissingImports"]
+	"editor.codeActionsOnSave": [
+		"source.organizeImports",
+		"source.fixAll",
+		"source.addMissingImports"
+	],
+	"files.autoSave": "afterDelay"
 }

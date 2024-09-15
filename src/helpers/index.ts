@@ -225,9 +225,15 @@ export function CreateIDGenerator() {
 	};
 }
 
-export function GetDeclarationName(type: ts.Type) {
+export function GetDeclarationNameFromType(type: ts.Type) {
 	const declaration = getDeclaration(getSymbol(type));
 	if (!declaration || !ts.isNamedDeclaration(declaration)) return "UnknownDeclaration";
+
+	return declaration.name.getText();
+}
+
+export function GetDeclarationName(declaration: ts.Declaration) {
+	if (!ts.isNamedDeclaration(declaration)) return "UnknownDeclaration";
 
 	return declaration.name.getText();
 }
@@ -263,7 +269,7 @@ export function AnyMatch<T>(element: T, array: T[]) {
 }
 export function GetTypeName(type: ts.Type) {
 	if (getSymbol(type) && !IsAnonymousObject(type)) {
-		return GetDeclarationName(type);
+		return GetDeclarationNameFromType(type);
 	} else if (IsDefinedType(type)) {
 		return `defined`;
 	} else if (type.flags & ts.TypeFlags.Intrinsic) {
