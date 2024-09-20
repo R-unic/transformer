@@ -3,9 +3,10 @@ import fs from "fs";
 import path from "path";
 import ts, { ObjectType } from "typescript";
 import { Tags } from "../project-config.json";
+import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformState } from "../transformer";
 import { f } from "./factory";
-import { GetRobloxInstanceType } from "./generate-type-description";
+import { GenerateTypeDescription, GetRobloxInstanceType } from "./generate-type-description";
 
 const nodeModulesPattern = "/node_modules/";
 const PATH_SEPARATOR_REGEX = /\\/g;
@@ -177,7 +178,7 @@ export function getType(symbol: ts.Symbol): ts.Type | undefined {
 	return typeChecker.getTypeOfSymbolAtLocation(symbol, declaration);
 }
 
-function GetSymbolNamespace(type: ts.Type) {
+function GetSymbolAssembly(type: ts.Type) {
 	const symbol = getSymbol(type);
 	const declaration = getDeclaration(symbol);
 
@@ -189,6 +190,10 @@ function GetSymbolNamespace(type: ts.Type) {
 	const { PackageName } = getAssemblyInfoFromFilePath(filePath);
 
 	return PackageName;
+}
+
+export function GenerateRegisterType(type: ts.Type) {
+	return ReflectionRuntime.RegisterType(GenerateTypeDescription(type, true));
 }
 
 export function GenerateUID(filePath: string, name: string) {
@@ -289,9 +294,9 @@ export function GetTypeName(type: ts.Type) {
 	return "Unknown";
 }
 
-export function GetTypeNamespace(type: ts.Type) {
+export function GetTypeAssembly(type: ts.Type) {
 	if (getSymbol(type) || IsAnonymousObject(type)) {
-		return GetSymbolNamespace(type);
+		return GetSymbolAssembly(type);
 	}
 
 	return "Global";

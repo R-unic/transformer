@@ -1,5 +1,6 @@
 import ts from "typescript";
-import { GenerateTypeDescriptionFromNode } from "../helpers/generate-type-description";
+import { GenerateRegisterType, getSymbol } from "../helpers";
+import { GenerateTypeDescription } from "../helpers/generate-type-description";
 import { ReflectionRuntime } from "../reflect-runtime";
 import { TransformState } from "../transformer";
 
@@ -11,9 +12,15 @@ export function TransformRegistery(node: ts.CallExpression) {
 	const type = typeChecker.getTypeFromTypeNode(typeArgument);
 
 	if (type.isUnion()) {
-		const types = type.types.map((v) => GenerateTypeDescriptionFromNode(v, true)[0]);
+		const types = type.types.map((v) => GenerateTypeDescription(v, true));
 		return ReflectionRuntime.RegisterTypes(...types);
 	}
 
-	return ReflectionRuntime.RegisterType([], GenerateTypeDescriptionFromNode(type)[0]);
+	const symbol = getSymbol(type);
+	if (!symbol) return GenerateRegisterType(type);
+
+	const originalType = typeChecker.getDeclaredTypeOfSymbol(symbol);
+	if (!originalType) return GenerateRegisterType(type);
+
+	return GenerateRegisterType(originalType);
 }

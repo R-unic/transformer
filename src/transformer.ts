@@ -9,6 +9,7 @@ import { f } from "./helpers/factory";
 import * as projectConfig from "./project-config.json";
 import { Tags } from "./project-config.json";
 import { Transformers } from "./transformers";
+import { OnNewFile } from "./events";
 
 const UnknownPackageName = "@@this";
 
@@ -22,6 +23,7 @@ export class TransformState {
 	private importSpecs = new Set<string>();
 	private addedNodes: { Before: ts.Statement[]; After: ts.Statement[] } = { Before: [], After: [] };
 	private generator = CreateIDGenerator();
+	private globalGenerator = CreateIDGenerator();
 	private sourceFile!: ts.SourceFile;
 	private cachedImport?: [ts.ImportDeclaration, number];
 	private isEnableGlobalReflect = false;
@@ -56,6 +58,10 @@ export class TransformState {
 
 	public get NextID() {
 		return this.generator();
+	}
+
+	public get NextGlobalID() {
+		return this.globalGenerator();
 	}
 
 	public get Config(): ConfigObject {
@@ -212,11 +218,7 @@ export class TransformState {
 			: ([undefined, undefined] as const);
 	}
 
-	private transformStatementList(
-		statements: NodeArray<ts.Statement>,
-		parent: ts.Node,
-		callback?: (node: ts.Node) => void,
-	) {
+	private transformStatementList(statements: NodeArray<ts.Statement>, callback?: (node: ts.Node) => void) {
 		const result: ts.Statement[] = [];
 
 		statements.forEach((statement) => {
@@ -241,13 +243,14 @@ export class TransformState {
 		this.isDisabledReflect = false;
 		this.isDisabledRegister = false;
 		this.generator = CreateIDGenerator();
+		OnNewFile.post();
 
 		const firstStatement = sourceFile.statements[0];
 		if (firstStatement && firstStatement.parent === undefined) {
 			(firstStatement.parent as ts.SourceFile) = sourceFile;
 		}
 
-		const statements = this.transformStatementList(sourceFile.statements, sourceFile, (node) => {
+		const statements = this.transformStatementList(sourceFile.statements, (node) => {
 			if (HaveTag(node, Tags.globalReflect)) {
 				this.isEnableGlobalReflect = true;
 			}
@@ -298,7 +301,7 @@ export class TransformState {
 			(child) => {
 				if (!ts.isBlock(child)) return visitNode(this, child);
 
-				const newStatements = this.transformStatementList(child.statements, child);
+				const newStatements = this.transformStatementList(child.statements);
 				return this.factory.updateBlock(child, newStatements);
 			},
 			this.context,

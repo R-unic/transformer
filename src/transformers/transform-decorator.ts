@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ts from "typescript";
-import { AttributeVid as AttributeKind } from "../declarations";
+import { AttributeKind } from "../declarations";
 import { getType } from "../helpers";
 import { f } from "../helpers/factory";
 import { ReflectionRuntime } from "../reflect-runtime";

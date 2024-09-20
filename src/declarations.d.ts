@@ -3,7 +3,7 @@ export type PackageInfo = {
 	name: string;
 };
 
-export type AttributeVid = "class" | "method" | "property" | "parameter";
+export type AttributeKind = "class" | "method" | "property" | "parameter";
 
 export interface Type {
 	readonly Name: string;

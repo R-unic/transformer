@@ -4,7 +4,7 @@
 	"description": "Library that allows you to work with types in runtime!",
 	"main": "out/index.js",
 	"author": "Tesmi (https://github.com/Tesmi-Develop)",
-  	"license": "MIT",
+	"license": "MIT",
 	"peerDependencies": {
 		"typescript": "^5.2.2"
 	},
@@ -22,10 +22,10 @@
 		"types",
 		"reflection-runtime"
 	],
-  	"repository": {
-    	"type": "git",
-    	"url": "https://github.com/roblox-ts-reflection/transformer"
-  	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/roblox-ts-reflection/transformer"
+	},
 	"devDependencies": {
 		"@types/node": "^16.11.1",
 		"@types/ts-expose-internals": "npm:ts-expose-internals@5.2.2",
@@ -38,5 +38,8 @@
 	},
 	"files": [
 		"out"
-	]
+	],
+	"dependencies": {
+		"ts-events": "^3.4.1"
+	}
 }
