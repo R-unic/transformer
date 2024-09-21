@@ -306,7 +306,9 @@ export function IsPrimive(type: ts.Type) {
 	return (
 		(type.flags | ts.TypeFlags.Intrinsic) === ts.TypeFlags.Intrinsic ||
 		(type.flags | ts.TypeFlags.NumberLiteral) === ts.TypeFlags.NumberLiteral ||
-		(type.flags | ts.TypeFlags.StringLiteral) === ts.TypeFlags.StringLiteral
+		(type.flags | ts.TypeFlags.StringLiteral) === ts.TypeFlags.StringLiteral ||
+		(type.flags | ts.TypeFlags.Primitive) === ts.TypeFlags.Primitive ||
+		(type.flags & ts.TypeFlags.BooleanLike) === 16 // Idk, it works boolean.
 	);
 }
 

@@ -9,6 +9,7 @@ export interface Type {
 	readonly Name: string;
 	readonly FullName: string;
 	readonly TypeParameters: Type[];
+	readonly ResolvedTypes: Type[];
 	readonly Assembly: string;
 	readonly Value?: unknown;
 	readonly ConditionalType?: ConditionalType;

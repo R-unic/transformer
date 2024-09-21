@@ -23,16 +23,29 @@ import { GetTypeKind } from "./get-type-kind";
 import { Logger } from "./logger";
 
 let scheduledType: string | undefined;
+let currentTypeHash: string | undefined;
+let isLocalType = false;
 
-const CachedTypes = new Map<string, number>(); // HashedType -> id
+const CachedTypes = new Map<ts.Type, number>(); // Type referense -> id
 
 OnNewFile.attach(() => {
 	CachedTypes.clear();
 });
 
-function RegisterLocalType(type: ts.Type) {
+function IsBaseType(type: ts.Type) {
+	return IsPrimive(type) || GetTypeAssembly(type) === "@rbxts/compiler-types";
+}
+
+function ExcludeContentForBaseTypes<T>(type: ts.Type, content: T[]) {
+	if (IsBaseType(type)) {
+		return [];
+	}
+
+	return content;
+}
+
+function RegisterLocalType(type: ts.Type, id: number) {
 	const context = TransformState.Instance;
-	const id = context.NextGlobalID;
 	context.AddNode(ReflectionRuntime.DefineLocalType(id, GenerateTypeDescription(type)), "before");
 
 	return id;
@@ -44,7 +57,7 @@ function GetTypeHash(type: ts.Type) {
 	const name = GetTypeName(type);
 	const typeChecker = TransformState.Instance.typeChecker;
 	const typeArguments = typeChecker.getTypeArguments(type as ts.TypeReference);
-	const TypeHash = typeArguments.map((t) => {
+	const typeHash = typeArguments.map((t) => {
 		if (t.isTypeParameter()) {
 			isHaveTypeParam = true;
 		}
@@ -52,20 +65,24 @@ function GetTypeHash(type: ts.Type) {
 		return GetTypeName(t);
 	});
 
-	return [`${name}:${TypeHash.join("")}` as string, isHaveTypeParam] as const;
+	return [`${name}:${typeHash.join("")}` as string, isHaveTypeParam] as const;
 }
 
 function RegisterTypeWithGeneric(type: ts.Type) {
-	const [hash, haveTypeParams] = GetTypeHash(type);
-
-	if (CachedTypes.has(hash) && !haveTypeParams) {
-		return CachedTypes.get(hash)!;
+	if (CachedTypes.has(type)) {
+		return CachedTypes.get(type)!;
 	}
 
-	const id = RegisterLocalType(type);
-	if (!haveTypeParams) {
-		CachedTypes.set(hash, id);
-	}
+	const context = TransformState.Instance;
+	const id = context.NextGlobalID;
+
+	CachedTypes.set(type, id);
+
+	const oldValue = isLocalType;
+	isLocalType = true;
+
+	RegisterLocalType(type, id);
+	isLocalType = oldValue;
 
 	return id;
 }
@@ -75,6 +92,7 @@ function GetReferenceType(type: ts.Type): Type {
 	const declaration = getDeclaration(symbol);
 	const typeChecker = TransformState.Instance.typeChecker;
 	const typeArguments = typeChecker.getTypeArguments(type as ts.TypeReference);
+	const [hash] = GetTypeHash(type);
 
 	// this type
 	if (type.isTypeParameter() && type.isThisType) {
@@ -82,18 +100,25 @@ function GetReferenceType(type: ts.Type): Type {
 		return ReflectionRuntime.__GetType(fullName, true);
 	}
 
+	if (currentTypeHash === hash) {
+		if (!isLocalType) {
+			const fullName = GetTypeUid(type);
+			return ReflectionRuntime.__GetType(fullName, true);
+		}
+	}
+
 	if (typeArguments.length > 0 && !type.isTypeParameter()) {
 		const id = RegisterTypeWithGeneric(type);
-		return ReflectionRuntime.GetLocalType(id);
+		return ReflectionRuntime.GetLocalType(id, currentTypeHash === hash);
 	}
 
 	if (type.isTypeParameter()) {
-		const id = definedGenerics.get(GetDeclarationNameFromType(type));
+		const id = definedGenerics!.get(GetDeclarationNameFromType(type));
 		if (!id) {
 			throw "Not found id for generic";
 		}
 
-		return ReflectionRuntime.GetLocalType(id);
+		return ReflectionRuntime.GetLocalType(id, false);
 	}
 
 	if ((declaration || IsPrimive(type)) && !IsAnonymousObject(type)) {
@@ -108,7 +133,8 @@ function GetInterfaces(node?: ts.Node, nodeType?: ts.Type) {
 	if (
 		node === undefined ||
 		nodeType === undefined ||
-		(!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node))
+		(!ts.isClassDeclaration(node) && !ts.isInterfaceDeclaration(node)) ||
+		IsBaseType(nodeType)
 	)
 		return [];
 	if (!node.heritageClauses) return [];
@@ -208,19 +234,21 @@ function GenerateProperty(memberSymbol: ts.Symbol): Property | undefined {
 }
 
 function GetProperties(type: ts.Type): Property[] {
-	return type
-		.getProperties()
+	return ExcludeContentForBaseTypes(type, type.getProperties())
 		.filter(
 			(m) =>
-				(m.flags & ts.SymbolFlags.Property) === ts.SymbolFlags.Property ||
-				(m.flags & ts.SymbolFlags.GetAccessor) === ts.SymbolFlags.GetAccessor ||
-				(m.flags & ts.SymbolFlags.SetAccessor) === ts.SymbolFlags.SetAccessor,
+				((m.flags & ts.SymbolFlags.Property) === ts.SymbolFlags.Property ||
+					(m.flags & ts.SymbolFlags.GetAccessor) === ts.SymbolFlags.GetAccessor ||
+					(m.flags & ts.SymbolFlags.SetAccessor) === ts.SymbolFlags.SetAccessor) &&
+				!m.escapedName.toString().startsWith("_nominal"),
 		)
 		.map((memberSymbol) => GenerateProperty(memberSymbol))
 		.filter((property) => !!property) as Property[];
 }
 
 function GetBaseType(type: ts.Type) {
+	if (IsBaseType(type)) return;
+
 	const baseType = (type.getBaseTypes() ?? [])[0] ?? type.getDefault();
 
 	return baseType ? GetReferenceType(baseType) : undefined;
@@ -291,9 +319,8 @@ function GenerateMethodDescription(signature: ts.Signature, symbol: ts.Symbol): 
 
 function GetMethods(type: ts.Type) {
 	const typeChecker = TransformState.Instance.typeChecker;
-	const members = type.getProperties();
 
-	return members
+	return ExcludeContentForBaseTypes(type, type.getProperties())
 		.filter(
 			(m) =>
 				(m.flags & ts.SymbolFlags.Method) === ts.SymbolFlags.Method ||
@@ -381,19 +408,26 @@ function GetTypeParameters(type: ts.Type) {
 		.map((type) => {
 			if (!type.isTypeParameter()) return;
 
-			return [RegisterLocalType(type), GetDeclarationNameFromType(type)] as const;
+			const id = TransformState.Instance.NextGlobalID;
+			return [RegisterLocalType(type, id), GetDeclarationNameFromType(type)] as const;
 		})
 		.filter((v) => v !== undefined);
 }
 
-const definedGenerics = new Map<string, number>();
+let definedGenerics: Map<string, number> | undefined;
 
 export function GenerateTypeDescription(type: ts.Type, schedulingType = true): Type {
+	const typeChecker = TransformState.Instance.typeChecker;
 	const declaration = getDeclaration(getSymbol(type));
 	const fullName = GetTypeUid(type);
 	const genericIds = GetTypeParameters(type);
+	const [hash] = GetTypeHash(type);
 
-	genericIds.forEach((v) => definedGenerics.set(v[1], v[0]));
+	const prevDefinedGenerics = definedGenerics;
+	definedGenerics = new Map();
+
+	genericIds.forEach((v) => definedGenerics!.set(v[1], v[0]));
+	currentTypeHash = hash;
 
 	if (schedulingType) {
 		scheduledType = fullName;
@@ -401,7 +435,14 @@ export function GenerateTypeDescription(type: ts.Type, schedulingType = true): T
 
 	const decscription: Type = {
 		Name: GetTypeName(type),
-		TypeParameters: genericIds.map(([id]) => ReflectionRuntime.GetLocalType(id)),
+		TypeParameters: genericIds.map(([id]) => ReflectionRuntime.GetLocalType(id, false)),
+		ResolvedTypes: typeChecker
+			.getTypeArguments(type as ts.TypeReference)
+			.map((t) => {
+				if (t.isTypeParameter()) return;
+				return GetReferenceType(t);
+			})
+			.filter((v) => v !== undefined),
 		FullName: fullName,
 		Assembly: GetTypeAssembly(type),
 		Value: GetReferenceValue(type),
@@ -420,7 +461,8 @@ export function GenerateTypeDescription(type: ts.Type, schedulingType = true): T
 		scheduledType = undefined;
 	}
 
-	definedGenerics.clear();
+	currentTypeHash = undefined;
+	definedGenerics = prevDefinedGenerics;
 
 	return decscription;
 }
