@@ -4,6 +4,7 @@ import {
 	GetDeclarationName,
 	GetDeclarationNameFromType,
 	getSymbol,
+	GetSymbolAssembly,
 	getType,
 	GetTypeAssembly,
 	GetTypeName,
@@ -34,6 +35,11 @@ OnNewFile.attach(() => {
 
 function IsBaseType(type: ts.Type) {
 	return IsPrimive(type) || GetTypeAssembly(type) === "@rbxts/compiler-types";
+}
+
+function IsBaseTypeBySymbol(symbol: ts.Symbol) {
+	const assembly = GetSymbolAssembly(symbol);
+	return IsPrimive(getType(symbol)!) || assembly === "@rbxts/compiler-types" || assembly === "@rbxts/types";
 }
 
 function ExcludeContentForBaseTypes<T>(type: ts.Type, content: T[]) {
@@ -202,11 +208,7 @@ function HaveUndefined(type: ts.Type) {
 	return false;
 }
 
-function GetTypeDescription(type: ts.Type): Type;
-function GetTypeDescription(node: ts.Node): Type;
-function GetTypeDescription(node: ts.Node | ts.Type) {
-	const typeChecker = TransformState.Instance.typeChecker;
-	const type = ts.isNode(node as ts.Node) ? typeChecker.getTypeAtLocation(node as ts.Node) : (node as ts.Type);
+function GetTypeDescription(type: ts.Type) {
 	return GetReferenceType(type);
 }
 
@@ -242,6 +244,12 @@ function GetProperties(type: ts.Type): Property[] {
 					(m.flags & ts.SymbolFlags.SetAccessor) === ts.SymbolFlags.SetAccessor) &&
 				!m.escapedName.toString().startsWith("_nominal"),
 		)
+		.filter((m) => {
+			const parent = m.parent;
+			if (!parent) return true;
+
+			return !IsBaseTypeBySymbol(m);
+		})
 		.map((memberSymbol) => GenerateProperty(memberSymbol))
 		.filter((property) => !!property) as Property[];
 }
@@ -323,9 +331,18 @@ function GetMethods(type: ts.Type) {
 	return ExcludeContentForBaseTypes(type, type.getProperties())
 		.filter(
 			(m) =>
-				(m.flags & ts.SymbolFlags.Method) === ts.SymbolFlags.Method ||
-				(m.flags & ts.SymbolFlags.Function) === ts.SymbolFlags.Function,
+				((m.flags & ts.SymbolFlags.Method) === ts.SymbolFlags.Method ||
+					(m.flags & ts.SymbolFlags.Function) === ts.SymbolFlags.Function) &&
+				m.parent !== undefined &&
+				!IsBaseTypeBySymbol(m.parent),
 		)
+		.filter((m) => {
+			const parent = m.parent;
+			if (!parent) return true;
+
+			console.log();
+			return true;
+		})
 		.flatMap((memberSymbol: ts.Symbol) => {
 			const declaration = getDeclaration(memberSymbol);
 

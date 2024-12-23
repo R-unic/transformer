@@ -27,6 +27,8 @@ const validators: Record<TypeKind, (type: ts.Type) => boolean> = {
 		return declaration !== undefined && ts.isEnumDeclaration(declaration);
 	},
 	[TypeKind.Instance]: (v) => IsRobloxInstance(v),
+	[TypeKind.Union]: (v) => v.isUnion(),
+	[TypeKind.Intersection]: (v) => v.isIntersection(),
 };
 
 export function GetTypeKind(type: ts.Type) {

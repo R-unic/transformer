@@ -6,17 +6,17 @@ export function VisitMethodDeclaration(context: TransformState, node: ts.MethodD
 	const result = TransformAnyFunction(context, node);
 	if (!result) return node;
 
-	const [updatedNode, block] = result;
+	const [block, modifiers] = result;
 
 	return context.factory.updateMethodDeclaration(
-		updatedNode,
-		updatedNode.modifiers,
-		updatedNode.asteriskToken,
-		updatedNode.name,
-		updatedNode.questionToken,
-		updatedNode.typeParameters,
-		updatedNode.parameters,
-		updatedNode.type,
-		block ?? updatedNode.body,
+		node,
+		modifiers,
+		node.asteriskToken,
+		node.name,
+		node.questionToken,
+		node.typeParameters,
+		node.parameters,
+		node.type,
+		block ?? node.body,
 	);
 }

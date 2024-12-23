@@ -178,8 +178,7 @@ export function getType(symbol: ts.Symbol): ts.Type | undefined {
 	return typeChecker.getTypeOfSymbolAtLocation(symbol, declaration);
 }
 
-function GetSymbolAssembly(type: ts.Type) {
-	const symbol = getSymbol(type);
+export function GetSymbolAssembly(symbol: ts.Symbol) {
 	const declaration = getDeclaration(symbol);
 
 	if (!declaration) {
@@ -296,11 +295,13 @@ export function GetTypeName(type: ts.Type) {
 
 export function GetTypeAssembly(type: ts.Type) {
 	if (getSymbol(type) || IsAnonymousObject(type)) {
-		return GetSymbolAssembly(type);
+		const symbol = getSymbol(type);
+		return GetSymbolAssembly(symbol);
 	}
 
 	return "Global";
 }
+
 
 export function IsPrimive(type: ts.Type) {
 	return (
@@ -308,7 +309,7 @@ export function IsPrimive(type: ts.Type) {
 		(type.flags | ts.TypeFlags.NumberLiteral) === ts.TypeFlags.NumberLiteral ||
 		(type.flags | ts.TypeFlags.StringLiteral) === ts.TypeFlags.StringLiteral ||
 		(type.flags | ts.TypeFlags.Primitive) === ts.TypeFlags.Primitive ||
-		(type.flags & ts.TypeFlags.BooleanLike) === 16 // Idk, it works boolean.
+		(type.flags & ts.TypeFlags.BooleanLike) === 16 // Idk, it works with boolean.
 	);
 }
 

@@ -4,12 +4,12 @@ import path from "path";
 import ts, { ImportDeclaration, NodeArray } from "typescript";
 import { ConfigObject, createConfig } from "./config";
 import { PackageInfo, TSConfig } from "./declarations";
+import { OnNewFile } from "./events";
 import { CreateIDGenerator, HaveTag } from "./helpers";
 import { f } from "./helpers/factory";
 import * as projectConfig from "./project-config.json";
 import { Tags } from "./project-config.json";
 import { Transformers } from "./transformers";
-import { OnNewFile } from "./events";
 
 const UnknownPackageName = "@@this";
 
@@ -73,22 +73,19 @@ export class TransformState {
 	}
 
 	public OverrideBlockContext() {
-		const prevNodesBefore = this.addedNodes.Before;
-		const prevNodesAfter = this.addedNodes.After;
+		const prevNodes = this.addedNodes;
 		this.ClearAddedNodes();
 
 		return () => {
-			this.addedNodes.Before = prevNodesBefore;
-			this.addedNodes.After = prevNodesAfter;
+			this.addedNodes = prevNodes;
 		};
 	}
 
 	public ClearAddedNodes() {
-		this.addedNodes.After = [];
-		this.addedNodes.Before = [];
+		this.addedNodes = { Before: [], After: [] };
 	}
 
-	public AddNode(node: ts.Statement | ts.Statement[], place: "before" | "after" = "before") {
+	public AddNode(node: ts.Statement | ReadonlyArray<ts.Statement>, place: "before" | "after" = "before") {
 		if (place === "before") {
 			this.addedNodes.Before.push(...(Array.isArray(node) ? node : [node]));
 			return;
@@ -223,7 +220,7 @@ export class TransformState {
 
 		statements.forEach((statement) => {
 			const clearContext = this.OverrideBlockContext();
-			const newNode = visitNode(this, statement) as ts.Statement;
+			const newNode = VisitNode(this, statement) as ts.Statement;
 			callback?.(newNode);
 
 			const newNodes = [...this.addedNodes.Before, newNode, ...this.addedNodes.After];
@@ -295,21 +292,25 @@ export class TransformState {
 		return f.update.sourceFile(sourceFile, this.factory.createNodeArray(statements));
 	}
 
+	public VisitBlock(block: ts.Block) {
+		const newStatements = this.transformStatementList(block.statements);
+		return this.factory.updateBlock(block, newStatements);
+	}
+
 	public Transform<T extends ts.Node>(node: T): T {
 		return ts.visitEachChild(
 			node,
 			(child) => {
-				if (!ts.isBlock(child)) return visitNode(this, child);
+				if (!ts.isBlock(child)) return VisitNode(this, child);
 
-				const newStatements = this.transformStatementList(child.statements);
-				return this.factory.updateBlock(child, newStatements);
+				return this.VisitBlock(child);
 			},
 			this.context,
 		);
 	}
 }
 
-function visitNode(context: TransformState, node: ts.Node): ts.Node {
+export function VisitNode(context: TransformState, node: ts.Node): ts.Node {
 	const transformer = Transformers.get(node.kind);
 	if (transformer) {
 		return transformer(context, node);

@@ -9,7 +9,7 @@ import {
 	GENERICS_ARRAY,
 } from "../helpers/generic-helper";
 import { ReflectionRuntime } from "../reflect-runtime";
-import { TransformState } from "../transformer";
+import { TransformState, VisitNode } from "../transformer";
 
 export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(state: TransformState, node: T) {
 	const typeParameters = node.typeParameters;
@@ -40,26 +40,41 @@ export function TransformAnyFunction<T extends ts.FunctionLikeDeclarationBase>(s
 		);
 	}
 
-	const restoreContext = state.OverrideBlockContext();
-	const updatedNode = state.Transform(node);
-	const nodesFromContext = state.BlockContext;
+	let returnedModifiers: ts.ModifierLike[] | undefined;
 
-	let body = updatedNode.body;
-	ClearDefinedGenerics();
+	if (ts.isMethodDeclaration(node) && node.modifiers) {
+		returnedModifiers = [];
 
-	if (updatedNode === node && !isReflectSignature) return undefined;
+		node.modifiers.forEach((modifier) => {
+			returnedModifiers!.push(VisitNode(state, modifier) as ts.ModifierLike);
+		});
+	}
+
+	let body = node.body && ts.isBlock(node.body) ? (state.VisitBlock(node.body) as ts.Block) : node.body;
 
 	if (body && ts.isBlock(body)) {
 		body = state.factory.updateBlock(body, [...additionalNodes, ...body.statements]);
 	}
 
+	ClearDefinedGenerics();
+
+	if (body === node.body && !isReflectSignature) return;
 	if (body && !ts.isBlock(body)) {
+		const restoreContext = state.OverrideBlockContext();
+		const updatedNode = VisitNode(state, body) as ts.Expression;
+
 		body = state.factory.createBlock(
-			[...additionalNodes, ...nodesFromContext.Before, f.returnStatement(body)],
+			[
+				...additionalNodes,
+				...state.BlockContext.Before,
+				...state.BlockContext.After,
+				f.returnStatement(updatedNode),
+			],
 			true,
 		);
+
+		restoreContext();
 	}
 
-	restoreContext();
-	return [updatedNode, body] as const;
+	return [body, returnedModifiers] as const;
 }

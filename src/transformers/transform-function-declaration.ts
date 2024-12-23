@@ -6,16 +6,16 @@ export function VisitFunctionDeclaration(context: TransformState, node: ts.Funct
 	const result = TransformAnyFunction(context, node);
 	if (!result) return node;
 
-	const [updatedNode, block] = result;
+	const [block] = result;
 
 	return context.factory.updateFunctionDeclaration(
-		updatedNode,
-		updatedNode.modifiers,
-		updatedNode.asteriskToken,
-		updatedNode.name,
-		updatedNode.typeParameters,
-		updatedNode.parameters,
-		updatedNode.type,
-		block ?? updatedNode.body,
+		node,
+		node.modifiers,
+		node.asteriskToken,
+		node.name,
+		node.typeParameters,
+		node.parameters,
+		node.type,
+		block ?? node.body,
 	);
 }

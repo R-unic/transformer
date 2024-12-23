@@ -55,10 +55,10 @@ export function VisitDecorator(state: TransformState, node: ts.Decorator) {
 	if (!kind || !args) throw new Error(`Could not find kind for ${node.getText()}`);
 
 	const finalVarriableName = `${varriableName}_${state.NextID}`;
-	state.AddNode([
-		ReflectionRuntime.SetupKindForAttribute(kind, args),
-		f.variableStatement(finalVarriableName, callExpression),
-	]);
+	state.AddNode(
+		[ReflectionRuntime.SetupKindForAttribute(kind, args), f.variableStatement(finalVarriableName, callExpression)],
+		"before",
+	);
 
 	return f.update.decorator(node, f.identifier(finalVarriableName));
 }
